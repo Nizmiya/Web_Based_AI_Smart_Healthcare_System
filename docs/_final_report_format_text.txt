@@ -1,0 +1,198 @@
+Cardiff  Metr opolitan  University  
+Cardiff  School of Technology  
+BSc Software Engineering  
+[Title]  
+ 
+Submitted  in [Month]  
+[Year]  
+By 
+[Student Name]  
+ 
+(Student ID – Cardiff ID – ICBT ID ) 
+ 
+ 
+This dissert ation is submitted in  parti al 
+fulfillment of the requirements  for the 
+degree of 
+Bachelor  of Science in Software Engineering  (BSc SE )
+
+  
+ 
+ DEC LARATION 
+ 
+This work is being submitted in partial  fulfillment of the req uirements for the degree of 
+ 
+………………………………………………………………………………………… . a nd has not 
+previously been accepted in su bstance for any  degree and is not being concurrently su bmitted in  
+candidature for any deg ree. 
+ 
+ 
+ 
+Signed -  ............. ......................... ...................... 
+(Cand idate) Date  - .............. ..................... 
+ 
+ 
+ 
+ 
+ SUPER VISOR’S  DECLARATION STATEMENT  
+ 
+ 
+ 
+Student Na me – 
+Supervisor’s Name  - 
+ 
+ 
+I ackn owled ge that the a bove named student has  regularly attended the meeting, and  actively engaged 
+in the dissertation supervision process. 
+ 
+ 
+ 
+Signed - …………………………………………… . 
+(Supervisor) Date    - …………………...... 
+Acknowledgement  
+ 
+ 
+  
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+ Abstract  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+  
+Table of Contents  
+Acknowledgement  ................................ ................................ ................................ ................................ ........  i 
+Abstract  ................................ ................................ ................................ .........  Error! Bookmark not defined.  
+1.0 Introduction  ................................ ................................ ............................  Error! Bookmark not defined.  
+1.1 Background Studies  ................................ ................................ ...........  Error! Bookmark not defined.  
+1.2 Problem Statement  ................................ ................................ .............  Error! Bookmark not defined.  
+1.3 Objective  ................................ ................................ .............................  Error! Bookmark not defined.  
+1.4 Solutions  ................................ ................................ ..............................  Error! Bookmark not defined.  
+2.0 Literature Review  ................................ ................................ ..................  Error! Bookmark not defined.  
+3.0 Planning  ................................ ................................ ................................ .. Error! Bookmark not defined.  
+3.0.1 Feasibility Report  ................................ ................................ ............  Error! Bookmark not defined.  
+3.0.2 Risk Assessment  ................................ ................................ ..............  Error! Bookmark not defined.  
+3.0.3 SWOT ................................ ................................ ...............................  Error! Bookmark not defined.  
+3.0.4 PESTAL  Analysis   ................................ ................................ ...........  Error! Bookmark not defined.  
+3.0.5 Life Cycle Model  ................................ ................................ .............  Error! Bookmark not defined.  
+3.1.1 Time Plan  ................................ ................................ .........................  Error! Bookmark not defined.  
+4.2 Requirement Gathering  and Analysis  ................................ ..................  Error! Bookmark not defined.  
+4.2.1 Requirement Gathering technique used for the project  ..............  Error! Bookmark not defined.  
+4.2.2 Questionnaire  ................................ ................................ ..................  Error! Bookmark not defined.  
+4.2.3 Interview  ................................ ................................ ..........................  Error! Bookmark not defined.  
+Summary of the Interview and Questionnaire  ................................ .. Error! Bookmark not defined.  
+4.3 Functional and Non -Functional Requirements  ...............................  Error! Bookmark not defined.  
+4.3.1 Functional Requirements  ................................ ...............................  Error! Bookmark not defined.  
+4.3.2 Non -functional Requirement  ................................ .........................  Error! Bookmark not defined.  
+5.0 System Design  ................................ ................................ .........................  Error! Bookmark not defined.  
+5.1 Archtecture  Diagram  ................................ ................................ .........  Error! Bookmark not defined.  
+5.2 ER Diagram  ................................ ................................ ........................  Error! Bookmark not defined.  
+5.3 UML Diagrams  ................................ ................................ ...................  Error! Bookmark not defined.  
+5.4 Wireframe Diagram  ................................ ................................ ...........  Error! Bookmark not defined.  
+ 
+ 
+  
+ 
+ 6.0 Implementation  ................................ ................................ ......................  Error! Bookmark not defined.  
+6.1 Technology Stack  ................................ ................................ ...............  Error! Bookmark not defined.  
+6.2 Design patterns  ................................ ................................ ...................  Error! Bookmark not defined.  
+6.3 Implementation of the program  ................................ ........................  Error! Bookmark not defined.  
+7.0 Testing and Validation  ................................ ................................ ..........  Error! Bookmark not defined.  
+Test Plan  ................................ ................................ ................................ ... Error! Bookmark not defined.  
+Test Cases  ................................ ................................ ................................ . Error! Bookmark not defined.  
+8.0 Conclusion  ................................ ................................ ..............................  Error! Bookmark not defined.  
+8.1 Conclusion  ................................ ................................ ..........................  Error! Bookmark not defined.  
+8.2 Future Recommendations  ................................ ................................ . Error! Bookmark not defined.  
+8.3 Lessons Learned  ................................ ................................ .................  Error! Bookmark not defined.  
+Gantt Chart  ................................ ................................ ................................ .. Error! Bookmark not defined.  
+References  ................................ ................................ ................................ ..... Error! Bookmark not defined.  
+Appendix  1 ................................ ................................ ................................ .... Error! Bookmark not defined.  
+Questionnaire and answers  ................................ ................................ ...... Error! Bookmark not defined.  
+    Source codes  
+Test Case  ................................ ................................ ................................ ... Error! Bookmark not defined.  
+Appendix 2  
+Supervision meeting log sheets  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+List of Figures  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+List of Tables  

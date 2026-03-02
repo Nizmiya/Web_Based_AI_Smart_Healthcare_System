@@ -1,0 +1,23 @@
+{
+  "reportUndefinedVariable": "none",
+  "reportMissingImports": "warning",
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__"
+  ]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
