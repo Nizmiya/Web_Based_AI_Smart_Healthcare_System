@@ -7,6 +7,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
     <SidebarLayout
       title="Doctor"
       subtitle="Care Workspace"
+      theme="doctor"
       navItems={[
         { label: "Dashboard", href: "/doctor/dashboard" },
         { label: "Reviews", href: "/doctor/reviews" },

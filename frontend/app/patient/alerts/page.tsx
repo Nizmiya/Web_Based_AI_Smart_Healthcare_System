@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PatientAlertsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -47,7 +49,7 @@ export default function PatientAlertsPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -55,7 +57,7 @@ export default function PatientAlertsPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Alerts</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('alerts')}</h1>
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
           {error}
@@ -63,7 +65,7 @@ export default function PatientAlertsPage() {
       )}
       {alerts.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
-          No alerts available.
+          {t('noAlerts')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -85,7 +87,7 @@ export default function PatientAlertsPage() {
                     onClick={() => markAsRead(alert.id)}
                     className="text-sm text-blue-600 hover:text-blue-700"
                   >
-                    Mark read
+                    {t('markRead')}
                   </button>
                 )}
               </div>

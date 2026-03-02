@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import VideoRecommendations from '@/components/VideoRecommendations';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -18,6 +19,7 @@ const normalizeRecommendations = (value: any): string[] => {
 
 export default function HeartDiseasePrediction() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
@@ -105,7 +107,7 @@ export default function HeartDiseasePrediction() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to Dashboard
+          {t('backToDashboard')}
         </Link>
 
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -132,38 +134,50 @@ export default function HeartDiseasePrediction() {
             {result ? (
               <div className="space-y-6">
                 <div className={`bg-gradient-to-r ${riskColors[result.risk_level] || riskColors.Medium} text-white p-8 rounded-2xl shadow-xl`}>
-                  <h2 className="text-3xl font-bold mb-6">Prediction Result</h2>
+                  <h2 className="text-3xl font-bold mb-6">{t('predictionResult')}</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white/20 backdrop-blur-sm p-4 rounded-xl">
-                      <p className="text-white/80 mb-1">Risk Level</p>
+                      <p className="text-white/80 mb-1">{t('riskLevel')}</p>
                       <p className="text-2xl font-bold">{result.risk_level}</p>
                     </div>
                     <div className="bg-white/20 backdrop-blur-sm p-4 rounded-xl">
-                      <p className="text-white/80 mb-1">Risk Percentage</p>
+                      <p className="text-white/80 mb-1">{t('riskPercentage')}</p>
                       <p className="text-2xl font-bold">{result.risk_percentage}%</p>
                     </div>
                     <div className="bg-white/20 backdrop-blur-sm p-4 rounded-xl">
-                      <p className="text-white/80 mb-1">Prediction</p>
+                      <p className="text-white/80 mb-1">{t('prediction')}</p>
                       <p className="text-2xl font-bold">{result.prediction}</p>
                     </div>
                     <div className="bg-white/20 backdrop-blur-sm p-4 rounded-xl">
-                      <p className="text-white/80 mb-1">Confidence</p>
+                      <p className="text-white/80 mb-1">{t('confidence')}</p>
                       <p className="text-2xl font-bold">{result.confidence}%</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-gray-50 p-6 rounded-xl">
-                  <h3 className="font-bold text-lg mb-4">Recommendations</h3>
+                  <h3 className="font-bold text-lg mb-4">{t('recommendationsTitle')}</h3>
                   <ul className="list-disc pl-5 text-gray-700 space-y-2">
                     {(normalizeRecommendations(result.recommendation).length
                       ? normalizeRecommendations(result.recommendation)
-                      : ['Follow healthy lifestyle habits and consult a doctor if needed.']
+                      : [t('followHealthyFallback')]
                     ).map((item: string, index: number) => (
                       <li key={`${item}-${index}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
+
+                {(result as any).doctor_recommendation?.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
+                    <h3 className="font-bold text-lg mb-4 text-blue-800">{t('forYourDoctor')}</h3>
+                    <p className="text-sm text-blue-700 mb-3">{t('clinicalFollowUp')}</p>
+                    <ul className="list-disc pl-5 text-blue-800 space-y-2">
+                      {normalizeRecommendations((result as any).doctor_recommendation).map((item: string, index: number) => (
+                        <li key={`dr-${index}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <VideoRecommendations videos={result.video_recommendations || []} />
 
@@ -188,7 +202,7 @@ export default function HeartDiseasePrediction() {
                   }}
                   className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 transition-colors font-semibold text-lg"
                 >
-                  Make Another Prediction
+                  {t('makeAnotherPrediction')}
                 </button>
               </div>
             ) : (

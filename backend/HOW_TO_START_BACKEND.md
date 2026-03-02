@@ -73,6 +73,26 @@ Before starting, make sure:
 
 ---
 
+## 📦 Database collections (healthcare_db)
+
+| Collection         | Purpose |
+|--------------------|--------|
+| `users`            | Patients, doctors, admins |
+| `predictions`      | Prediction results (includes `risk_level`, `risk_percentage`, `recommendation`, `doctor_recommendation`) |
+| `patient_records`  | Patient-facing prediction records (same risk/recommendation data) |
+| `notifications`    | In-app notifications (e.g. high-risk alerts) |
+| `otps`             | One-time codes for forgot-password flow |
+| `consultations`    | Doctor–patient appointments / scheduled consultations |
+
+**Note:** There are no separate tables for "risk" or "recommendations". Risk is stored on each prediction (`risk_level`, `risk_percentage`). Recommendations are generated per request using the Gemini API (patient + doctor recommendations) and can be stored on the prediction/patient_record documents.
+
+To create all collections and indexes (including `consultations` and `patient_records`), run from the backend folder:
+```bash
+python simple_db_create.py
+```
+
+---
+
 ## 🌐 Backend URLs
 
 After starting, backend will be available at:

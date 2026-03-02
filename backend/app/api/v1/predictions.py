@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from typing import Optional, Literal, Dict, Any, List
+from typing import Optional, Literal, Dict, Any, List, Tuple
 from datetime import datetime
 from bson import ObjectId
 from app.core.database import get_database
@@ -58,6 +58,26 @@ FALLBACK_RECOMMENDATIONS = {
         "Ensure close monitoring and support from family or caregivers.",
         "Prepare medical history and recent test results for urgent review."
     ]
+}
+
+# Fallback doctor-facing recommendations per risk level (when Gemini is unavailable)
+FALLBACK_DOCTOR_RECOMMENDATIONS = {
+    "Low": [
+        "Reinforce preventive lifestyle advice at next visit.",
+        "Consider annual screening per guidelines.",
+    ],
+    "Medium": [
+        "Schedule follow-up and consider relevant labs or imaging.",
+        "Review medications and comorbidities; set goals with patient.",
+    ],
+    "High": [
+        "Prioritize in-person evaluation and specialist referral if indicated.",
+        "Review medications and vital monitoring plan.",
+    ],
+    "Critical": [
+        "Expedite evaluation; consider emergency referral if unstable.",
+        "Ensure continuity with clear handoff and follow-up plan.",
+    ],
 }
 
 # Replace URLs with curated YouTube links before production use.
@@ -452,6 +472,116 @@ async def generate_ai_recommendation(
 
     return _ensure_min_recommendations([], risk_level)
 
+
+def _parse_patient_and_doctor_recommendations(text: str) -> Tuple[List[str], List[str]]:
+    """Parse Gemini response with PATIENT RECOMMENDATIONS and DOCTOR RECOMMENDATIONS sections."""
+    patient_list: List[str] = []
+    doctor_list: List[str] = []
+    if not text or not isinstance(text, str):
+        return patient_list, doctor_list
+    text_lower = text.lower()
+    patient_marker = "patient recommendations"
+    doctor_marker = "doctor recommendations"
+    for marker, out_list in [
+        (patient_marker, patient_list),
+        (doctor_marker, doctor_list),
+    ]:
+        idx = text_lower.find(marker)
+        if idx == -1:
+            continue
+        end = len(text)
+        for other_marker in [patient_marker, doctor_marker]:
+            if other_marker == marker:
+                continue
+            other_idx = text_lower.find(other_marker, idx + 1)
+            if other_idx != -1 and other_idx < end:
+                end = other_idx
+        section = text[idx + len(marker) : end]
+        parsed = _parse_recommendations(section)
+        out_list.extend(parsed[:5])
+    return patient_list, doctor_list
+
+
+async def generate_ai_recommendations_with_doctor(
+    disease_type: str,
+    risk_level: str,
+    risk_percentage: float,
+    input_data: Dict[str, Any],
+) -> Tuple[List[str], List[str]]:
+    """Generate disease-specific patient + doctor recommendations via Gemini. Returns (patient_list, doctor_list)."""
+    if not settings.GEMINI_API_KEY:
+        patient = _ensure_min_recommendations([], risk_level)
+        doctor_fb = FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"])
+        return patient, list(doctor_fb)[:5]
+
+    disease_label = disease_type.replace("_", " ").title()
+    prompt = (
+        "You are a medical assistant. Reply with exactly two sections.\n\n"
+        "1) PATIENT RECOMMENDATIONS: Give exactly 5 short, non-diagnostic recommendations for the patient "
+        f"based on {disease_label} and {risk_level} risk ({round(risk_percentage, 2)}%). "
+        "One sentence each; suggest seeing a doctor for medium/high/critical risk. Number 1-5.\n\n"
+        "2) DOCTOR RECOMMENDATIONS: Give exactly 3-5 short, clinical recommendations for the clinician "
+        f"for this {disease_label} {risk_level}-risk case (e.g. follow-up, labs, referrals). Number 1-5.\n\n"
+        f"Parameters (for context): {input_data}\n\n"
+        "Use only the section headers PATIENT RECOMMENDATIONS: and DOCTOR RECOMMENDATIONS:."
+    )
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 512},
+    }
+    timeout = aiohttp.ClientTimeout(total=14)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            model_name = settings.GEMINI_MODEL
+            async with session.post(_build_model_url(model_name), json=payload) as response:
+                if response.status != 200:
+                    if response.status == 404:
+                        supported = await _fetch_supported_models(session)
+                        if supported:
+                            retry_model = supported[0]
+                            async with session.post(
+                                _build_model_url(retry_model), json=payload
+                            ) as retry_response:
+                                if retry_response.status == 200:
+                                    retry_data = await retry_response.json()
+                                    retry_text = (
+                                        retry_data.get("candidates", [{}])[0]
+                                        .get("content", {})
+                                        .get("parts", [{}])[0]
+                                        .get("text")
+                                    )
+                                    if retry_text and isinstance(retry_text, str):
+                                        p, d = _parse_patient_and_doctor_recommendations(retry_text)
+                                        return (
+                                            _ensure_min_recommendations(p, risk_level),
+                                            d[:5] if d else list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                                        )
+                    return (
+                        _ensure_min_recommendations([], risk_level),
+                        list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                    )
+                data = await response.json()
+                text = (
+                    data.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text")
+                )
+                if text and isinstance(text, str):
+                    p, d = _parse_patient_and_doctor_recommendations(text)
+                    return (
+                        _ensure_min_recommendations(p, risk_level),
+                        d[:5] if d else list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                    )
+    except Exception:
+        pass
+    return (
+        _ensure_min_recommendations([], risk_level),
+        list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+    )
+
+
 def _ensure_numpy_pickle_compat():
     """Allow loading pickles saved with NumPy 2.x when running NumPy 1.x (numpy._core.*)."""
     import sys
@@ -651,15 +781,15 @@ async def predict_diabetes(
         # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
         risk_level = get_risk_level(risk_percentage, "diabetes", prediction=int(prediction))
 
-        # Generate recommendation using AI (fallback if unavailable)
-        recommendation = await generate_ai_recommendation(
+        # Generate disease-specific patient + doctor recommendations via Gemini
+        recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
             "diabetes",
             risk_level,
             risk_percentage,
-            prediction_data.dict()
+            prediction_data.dict(),
         )
         video_recommendations = get_recommendation_videos("diabetes", risk_level)
-        
+
         # Save prediction to database
         prediction_record = {
             "user_id": current_user["id"],
@@ -669,13 +799,14 @@ async def predict_diabetes(
             "risk_percentage": float(risk_percentage),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "reviewed": False,
             "video_recommendations": video_recommendations,
             "created_at": datetime.utcnow()
         }
-        
+
         prediction_id = await db.predictions.insert_one(prediction_record)
-        
+
         # Also save to patient_records collection
         user_oid = ObjectId(current_user["id"]) if isinstance(current_user["id"], str) else current_user["id"]
         patient_record = {
@@ -687,6 +818,7 @@ async def predict_diabetes(
                 "risk_percentage": float(risk_percentage),
                 "risk_level": risk_level,
                 "recommendation": recommendation,
+                "doctor_recommendation": doctor_recommendation,
                 "confidence": round(max(probability) * 100, 2),
                 "video_recommendations": video_recommendations
             },
@@ -731,12 +863,13 @@ async def predict_diabetes(
             "risk_percentage": round(risk_percentage, 2),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "confidence": round(max(probability) * 100, 2),
             "video_recommendations": video_recommendations
         }
-    
+
     except Exception as e:
-        logger.exception("Heart disease prediction failed")
+        logger.exception("Diabetes prediction failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Prediction failed: {str(e)}"
@@ -782,15 +915,15 @@ async def predict_heart_disease(
         # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
         risk_level = get_risk_level(risk_percentage, "heart_disease", prediction=int(prediction))
 
-        # Generate recommendation using AI (fallback if unavailable)
-        recommendation = await generate_ai_recommendation(
+        # Generate disease-specific patient + doctor recommendations via Gemini
+        recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
             "heart_disease",
             risk_level,
             risk_percentage,
-            prediction_data.dict()
+            prediction_data.dict(),
         )
         video_recommendations = get_recommendation_videos("heart_disease", risk_level)
-        
+
         # Save prediction to database
         prediction_record = {
             "user_id": current_user["id"],
@@ -800,13 +933,14 @@ async def predict_heart_disease(
             "risk_percentage": float(risk_percentage),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "reviewed": False,
             "video_recommendations": video_recommendations,
             "created_at": datetime.utcnow()
         }
-        
+
         prediction_id = await db.predictions.insert_one(prediction_record)
-        
+
         # Also save to patient_records collection
         user_oid = ObjectId(current_user["id"]) if isinstance(current_user["id"], str) else current_user["id"]
         patient_record = {
@@ -818,6 +952,7 @@ async def predict_heart_disease(
                 "risk_percentage": float(risk_percentage),
                 "risk_level": risk_level,
                 "recommendation": recommendation,
+                "doctor_recommendation": doctor_recommendation,
                 "confidence": round(max(probability) * 100, 2),
                 "video_recommendations": video_recommendations
             },
@@ -826,7 +961,7 @@ async def predict_heart_disease(
             "updated_at": datetime.utcnow()
         }
         await db.patient_records.insert_one(patient_record)
-        
+
         # Create notifications for high risk predictions
         if risk_level in ["High", "Critical"]:
             disease_name = "heart_disease"
@@ -856,16 +991,17 @@ async def predict_heart_disease(
                     "patient_id": current_user["id"]
                 }
                 await db.notifications.insert_one(doctor_notification)
-        
+
         return {
             "prediction": "Positive" if prediction == 1 else "Negative",
             "risk_percentage": round(risk_percentage, 2),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "confidence": round(max(probability) * 100, 2),
             "video_recommendations": video_recommendations
         }
-    
+
     except Exception as e:
         logger.exception("Heart disease prediction failed")
         raise HTTPException(
@@ -946,15 +1082,15 @@ async def predict_kidney_disease(
         # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
         risk_level = get_risk_level(risk_percentage, "kidney_disease", prediction=int(prediction))
 
-        # Generate recommendation using AI (fallback if unavailable)
-        recommendation = await generate_ai_recommendation(
+        # Generate disease-specific patient + doctor recommendations via Gemini
+        recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
             "kidney_disease",
             risk_level,
             risk_percentage,
-            prediction_data.dict()
+            prediction_data.dict(),
         )
         video_recommendations = get_recommendation_videos("kidney_disease", risk_level)
-        
+
         # Save prediction to database
         prediction_record = {
             "user_id": current_user["id"],
@@ -964,13 +1100,14 @@ async def predict_kidney_disease(
             "risk_percentage": float(risk_percentage),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "reviewed": False,
             "video_recommendations": video_recommendations,
             "created_at": datetime.utcnow()
         }
-        
+
         prediction_id = await db.predictions.insert_one(prediction_record)
-        
+
         # Also save to patient_records collection
         user_oid = ObjectId(current_user["id"]) if isinstance(current_user["id"], str) else current_user["id"]
         patient_record = {
@@ -982,6 +1119,7 @@ async def predict_kidney_disease(
                 "risk_percentage": float(risk_percentage),
                 "risk_level": risk_level,
                 "recommendation": recommendation,
+                "doctor_recommendation": doctor_recommendation,
                 "confidence": round(max(probability) * 100, 2),
                 "video_recommendations": video_recommendations
             },
@@ -990,7 +1128,7 @@ async def predict_kidney_disease(
             "updated_at": datetime.utcnow()
         }
         await db.patient_records.insert_one(patient_record)
-        
+
         # Create notifications for high risk predictions
         if risk_level in ["High", "Critical"]:
             disease_name = "kidney_disease"
@@ -1020,16 +1158,17 @@ async def predict_kidney_disease(
                     "patient_id": current_user["id"]
                 }
                 await db.notifications.insert_one(doctor_notification)
-        
+
         return {
             "prediction": "Positive" if prediction == 1 else "Negative",
             "risk_percentage": round(risk_percentage, 2),
             "risk_level": risk_level,
             "recommendation": recommendation,
+            "doctor_recommendation": doctor_recommendation,
             "confidence": round(max(probability) * 100, 2),
             "video_recommendations": video_recommendations
         }
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

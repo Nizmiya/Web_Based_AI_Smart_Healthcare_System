@@ -6,7 +6,7 @@ import { Language, getTranslation } from '@/lib/translations';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -27,7 +27,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('language', lang);
   };
 
-  const t = (key: string) => getTranslation(key, language);
+  const t = (key: string, vars?: Record<string, string | number>) => getTranslation(key, language, vars);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

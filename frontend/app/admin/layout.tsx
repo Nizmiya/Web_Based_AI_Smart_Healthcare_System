@@ -7,6 +7,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SidebarLayout
       title="Admin"
       subtitle="System Console"
+      theme="admin"
       navItems={[
         { label: "Dashboard", href: "/admin/dashboard" },
         { label: "Patients", href: "/admin/patients" },

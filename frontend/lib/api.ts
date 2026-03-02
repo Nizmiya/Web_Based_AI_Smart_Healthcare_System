@@ -2,10 +2,10 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  const headers: HeadersInit = {
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   if (token) {

@@ -27,8 +27,10 @@ try:
     print(f"[OK] Database '{DATABASE_NAME}' accessed")
     
     # Create collections by inserting a document (then delete it)
-    collections = ['users', 'predictions', 'notifications', 'otps']
-    
+    # consultations = doctor-patient appointments; patient_records = prediction records per patient
+    # Risk and recommendations are NOT separate tables: risk is in predictions, recommendations are AI-generated
+    collections = ['users', 'predictions', 'notifications', 'otps', 'consultations', 'patient_records']
+
     print("\nCreating collections...")
     for collection_name in collections:
         # Insert and delete to create collection
@@ -57,7 +59,18 @@ try:
     db.notifications.create_index("user_id")
     db.notifications.create_index("is_read")
     print("  [OK] Indexes for 'notifications'")
-    
+
+    # Consultations indexes
+    db.consultations.create_index("patient_id")
+    db.consultations.create_index("doctor_id")
+    db.consultations.create_index("scheduled_at")
+    print("  [OK] Indexes for 'consultations'")
+
+    # Patient records indexes
+    db.patient_records.create_index("patient_id")
+    db.patient_records.create_index("disease_type")
+    print("  [OK] Indexes for 'patient_records'")
+
     # List collections
     existing_collections = db.list_collection_names()
     
