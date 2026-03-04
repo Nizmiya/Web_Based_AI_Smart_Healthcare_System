@@ -82,7 +82,9 @@ Before starting, make sure:
 | `patient_records`  | Patient-facing prediction records (same risk/recommendation data) |
 | `notifications`    | In-app notifications (e.g. high-risk alerts) |
 | `otps`             | One-time codes for forgot-password flow |
-| `consultations`    | Doctor–patient appointments / scheduled consultations |
+| `consultations`    | Doctor–patient appointments (includes `notes`, `doctor_private_notes` – private notes are doctor/admin only) |
+| `doctor_leaves`    | Doctor leave dates (from_date, to_date, reason) |
+| `audit_logs`       | Audit trail: who (user_id, role) viewed which patient profile/records and when |
 
 **Note:** There are no separate tables for "risk" or "recommendations". Risk is stored on each prediction (`risk_level`, `risk_percentage`). Recommendations are generated per request using the Gemini API (patient + doctor recommendations) and can be stored on the prediction/patient_record documents.
 

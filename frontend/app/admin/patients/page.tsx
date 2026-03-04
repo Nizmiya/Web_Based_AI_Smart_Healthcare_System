@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { showSuccess, showError } from '@/lib/alerts';
 
 export default function ManagePatients() {
   const router = useRouter();
@@ -12,6 +13,9 @@ export default function ManagePatients() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterDoctorId, setFilterDoctorId] = useState('');
+  const [filterRisk, setFilterRisk] = useState('');
+  const [sortBy, setSortBy] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,8 +39,13 @@ export default function ManagePatients() {
 
   const loadData = async () => {
     try {
+      const params: { search?: string; assigned_doctor_id?: string; risk_level?: string; sort_by?: string } = {};
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (filterDoctorId) params.assigned_doctor_id = filterDoctorId;
+      if (filterRisk) params.risk_level = filterRisk;
+      if (sortBy) params.sort_by = sortBy;
       const [patientsRes, doctorsRes] = await Promise.all([
-        api.users.getPatients(),
+        api.users.getPatients(params),
         api.admin.getDoctors().catch(() => []),
       ]);
       setPatients(Array.isArray(patientsRes) ? patientsRes : []);
@@ -54,9 +63,10 @@ export default function ManagePatients() {
     setUpdating(patient.id);
     try {
       await api.admin.updateUserActive(patient.id, next);
+      await showSuccess('Status updated', `Patient ${next ? 'activated' : 'deactivated'} successfully.`);
       await loadData();
     } catch (err) {
-      console.error(err);
+      await showError('Update failed', 'Failed to update patient status. Please try again.');
     } finally {
       setUpdating(null);
     }
@@ -66,32 +76,38 @@ export default function ManagePatients() {
     if (!doctorId) {
       try {
         await api.admin.unassignDoctor(patientId);
+        await showSuccess('Doctor unassigned', 'The patient has been unassigned from the doctor.');
         await loadData();
       } catch (err) {
-        console.error(err);
+        await showError('Update failed', 'Failed to unassign doctor. Please try again.');
       }
       return;
     }
     setUpdating(patientId);
     try {
       await api.admin.assignDoctor(patientId, doctorId);
+      await showSuccess('Doctor assigned', 'The doctor has been assigned to this patient successfully.');
       await loadData();
     } catch (err) {
-      console.error(err);
+      await showError('Update failed', 'Failed to assign doctor. Please try again.');
     } finally {
       setUpdating(null);
     }
   };
 
-  // Filter patients based on search term
-  const filteredPatients = patients.filter(patient => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      patient.full_name?.toLowerCase().includes(searchLower) ||
-      patient.email?.toLowerCase().includes(searchLower) ||
-      patient.phone?.toLowerCase().includes(searchLower)
-    );
-  });
+  const filterDeps = [searchTerm, filterDoctorId, filterRisk, sortBy];
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (!user) return;
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    const t = setTimeout(loadData, 300);
+    return () => clearTimeout(t);
+  }, filterDeps);
+
+  const filteredPatients = patients;
 
   if (!user || loading) {
     return (
@@ -148,8 +164,8 @@ export default function ManagePatients() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Bar */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[200px] relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -163,6 +179,35 @@ export default function ManagePatients() {
                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900"
               />
             </div>
+            <select
+              value={filterDoctorId}
+              onChange={(e) => setFilterDoctorId(e.target.value)}
+              className="border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 min-w-[160px]"
+            >
+              <option value="">All doctors</option>
+              {doctors.map((d: any) => (
+                <option key={d.id} value={d.id}>{d.full_name}</option>
+              ))}
+            </select>
+            <select
+              value={filterRisk}
+              onChange={(e) => setFilterRisk(e.target.value)}
+              className="border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 min-w-[140px]"
+            >
+              <option value="">All risk</option>
+              <option value="High">High risk</option>
+              <option value="Critical">Critical</option>
+              <option value="High,Critical">High or Critical</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 min-w-[120px]"
+            >
+              <option value="">Sort</option>
+              <option value="name">By name</option>
+              <option value="created_at">By date</option>
+            </select>
             <div className="text-sm text-gray-600">
               Total: <span className="font-semibold text-gray-800">{filteredPatients.length}</span> patients
             </div>

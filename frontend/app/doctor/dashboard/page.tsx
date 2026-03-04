@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { API_URL, api } from '@/lib/api';
 
 export default function DoctorDashboard() {
   const router = useRouter();
@@ -16,6 +16,12 @@ export default function DoctorDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [consultationStats, setConsultationStats] = useState<{
+    total_consultations?: number;
+    consultations_completed?: number;
+    consultations_scheduled?: number;
+    high_risk_patients_count?: number;
+  } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -76,7 +82,14 @@ export default function DoctorDashboard() {
 
       if (patientsResponse.ok) {
         const patientsData = await patientsResponse.json();
-        setPatients(patientsData.slice(0, 5)); // Show recent 5
+        setPatients(Array.isArray(patientsData) ? patientsData.slice(0, 5) : []);
+      }
+
+      try {
+        const statsData = await api.consultations.getStats();
+        setConsultationStats(statsData);
+      } catch {
+        setConsultationStats(null);
       }
 
       // Fetch recent predictions with patient details
@@ -117,6 +130,10 @@ export default function DoctorDashboard() {
   const stats = [
     { title: 'Total Patients', value: patients.length, icon: '👥', color: 'blue', borderColor: 'border-blue-500', textColor: 'text-blue-600' },
     { title: 'Pending Reviews', value: pendingReviews, icon: '📋', color: 'orange', borderColor: 'border-orange-500', textColor: 'text-orange-600' },
+    ...(consultationStats ? [
+      { title: 'Consultations', value: consultationStats.total_consultations ?? 0, icon: '📅', color: 'green', borderColor: 'border-green-500', textColor: 'text-green-600' },
+      { title: 'High-risk (my patients)', value: consultationStats.high_risk_patients_count ?? 0, icon: '⚠️', color: 'red', borderColor: 'border-red-500', textColor: 'text-red-600' },
+    ] : []),
   ];
 
   return (

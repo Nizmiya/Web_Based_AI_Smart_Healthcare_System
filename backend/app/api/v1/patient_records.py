@@ -150,6 +150,12 @@ async def get_patient_records(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only view your own records"
             )
+        if user_role in ("doctor", "admin"):
+            from app.core.audit import log_audit
+            await log_audit(
+                db, current_user["id"], user_role,
+                "view_patient_records", "patient_records", None, patient_id,
+            )
         
         # Build query
         query = {"patient_id": patient_oid}
@@ -261,8 +267,14 @@ async def update_patient_record(
         user_id = current_user["id"]
         user_role = current_user.get("role")
         
-        # Get existing record
-        record = await db.patient_records.find_one({"_id": record_id})
+        try:
+            record_oid = ObjectId(record_id)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid record ID format"
+            )
+        record = await db.patient_records.find_one({"_id": record_oid})
         if not record:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -271,7 +283,7 @@ async def update_patient_record(
         
         # Check permissions
         patient_id = record["patient_id"]
-        if user_role == "patient" and user_id != patient_id:
+        if user_role == "patient" and user_id != str(patient_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only update your own records"
@@ -287,6 +299,7 @@ async def update_patient_record(
             KidneyDiseaseParameters(**parameters)
         
         # Update record
+        user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
         update_data = {
             "parameters": parameters,
             "updated_at": datetime.utcnow(),
@@ -326,8 +339,14 @@ async def delete_patient_record(
         user_id = current_user["id"]
         user_role = current_user.get("role")
         
-        # Get existing record
-        record = await db.patient_records.find_one({"_id": record_id})
+        try:
+            record_oid = ObjectId(record_id)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid record ID format"
+            )
+        record = await db.patient_records.find_one({"_id": record_oid})
         if not record:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -336,7 +355,7 @@ async def delete_patient_record(
         
         # Check permissions
         patient_id = record["patient_id"]
-        if user_role == "patient" and user_id != patient_id:
+        if user_role == "patient" and user_id != str(patient_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete your own records"

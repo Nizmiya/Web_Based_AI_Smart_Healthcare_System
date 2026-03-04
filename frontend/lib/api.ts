@@ -148,7 +148,15 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
-    getPatients: () => apiRequest('/api/v1/users/patients'),
+    getPatients: (params?: { search?: string; assigned_doctor_id?: string; risk_level?: string; sort_by?: string }) => {
+      const search = new URLSearchParams();
+      if (params?.search) search.set('search', params.search);
+      if (params?.assigned_doctor_id) search.set('assigned_doctor_id', params.assigned_doctor_id);
+      if (params?.risk_level) search.set('risk_level', params.risk_level);
+      if (params?.sort_by) search.set('sort_by', params.sort_by);
+      const q = search.toString();
+      return apiRequest(`/api/v1/users/patients${q ? `?${q}` : ''}`);
+    },
     getPatientProfile: (patientId: string) =>
       apiRequest(`/api/v1/users/patients/${patientId}/profile`),
     addPatientRemark: (patientId: string, remark: string) =>
@@ -181,6 +189,29 @@ export const api = {
       }),
     getReportsSummary: () => apiRequest('/api/v1/admin/reports/summary'),
     getModels: () => apiRequest('/api/v1/admin/models'),
+    getAuditLogs: (params?: { limit?: number; skip?: number; user_id?: string; action?: string; patient_id?: string }) => {
+      const search = new URLSearchParams();
+      if (params?.limit != null) search.set('limit', String(params.limit));
+      if (params?.skip != null) search.set('skip', String(params.skip));
+      if (params?.user_id) search.set('user_id', params.user_id);
+      if (params?.action) search.set('action', params.action);
+      if (params?.patient_id) search.set('patient_id', params.patient_id);
+      const q = search.toString();
+      return apiRequest(`/api/v1/admin/audit-logs${q ? `?${q}` : ''}`);
+    },
+  },
+  doctorAvailability: {
+    addLeave: (body: { from_date: string; to_date: string; reason?: string }, doctorId?: string) => {
+      const url = doctorId ? `/api/v1/doctor-availability/leave?doctor_id=${encodeURIComponent(doctorId)}` : '/api/v1/doctor-availability/leave';
+      return apiRequest(url, { method: 'POST', body: JSON.stringify(body) });
+    },
+    listLeaves: (doctorId?: string) => {
+      const q = doctorId ? `?doctor_id=${encodeURIComponent(doctorId)}` : '';
+      return apiRequest(`/api/v1/doctor-availability/leave${q}`);
+    },
+    deleteLeave: (leaveId: string) =>
+      apiRequest(`/api/v1/doctor-availability/leave/${leaveId}`, { method: 'DELETE' }),
+    listDoctorsWithLeaves: () => apiRequest('/api/v1/doctor-availability/doctors-with-leaves'),
   },
   consultations: {
     list: (params?: { patient_id?: string; status?: string }) => {
@@ -195,12 +226,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: { scheduled_at?: string; status?: string; notes?: string }) =>
+    update: (id: string, data: { scheduled_at?: string; status?: string; notes?: string; doctor_private_notes?: string }) =>
       apiRequest(`/api/v1/consultations/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     get: (id: string) => apiRequest(`/api/v1/consultations/${id}`),
+    getStats: () => apiRequest('/api/v1/consultations/stats'),
   },
 };
 

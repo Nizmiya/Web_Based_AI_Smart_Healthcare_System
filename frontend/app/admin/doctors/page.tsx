@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
+import { validateRequired, validateEmail, validatePhone10, validatePassword } from '@/lib/validations';
+import { showSuccess, showError, showConfirm } from '@/lib/alerts';
 
 export default function ManageDoctors() {
   const router = useRouter();
@@ -61,10 +63,19 @@ export default function ManageDoctors() {
 
   const handleAddDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError('');
     setSuccess('');
-
+    const nameErr = validateRequired(formData.full_name, 'Full name');
+    const emailErr = validateEmail(formData.email);
+    const phoneErr = formData.phone ? validatePhone10(formData.phone) : null;
+    const pwdErr = validatePassword(formData.password, 8, 12);
+    const err = nameErr || emailErr || phoneErr || pwdErr;
+    if (err) {
+      setError(err);
+      await showError('Please fill required fields', err);
+      return;
+    }
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/v1/admin/doctors`, {
@@ -77,28 +88,33 @@ export default function ManageDoctors() {
       });
 
       if (response.ok) {
+        await showSuccess('Doctor added successfully', 'The new doctor can now login with the provided credentials.');
         setSuccess('Doctor added successfully!');
         setFormData({ email: '', full_name: '', phone: '', password: '' });
         setShowAddForm(false);
-        // Refresh doctors list
-        if (token) {
-          fetchDoctors(token);
-        }
+        if (token) fetchDoctors(token);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Failed to add doctor');
+        const msg = errorData.detail || 'Failed to add doctor';
+        setError(msg);
+        await showError('Failed to add doctor', msg);
       }
     } catch (err) {
-      setError('Connection error. Make sure backend is running.');
+      const msg = 'Connection error. Make sure backend is running.';
+      setError(msg);
+      await showError('Submit failed', msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteDoctor = async (doctorId: string) => {
-    if (!confirm('Are you sure you want to delete this doctor?')) {
-      return;
-    }
+    const confirmed = await showConfirm(
+      'Delete doctor?',
+      'This action cannot be undone. The doctor will no longer be able to login.',
+      'Yes, delete'
+    );
+    if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -110,16 +126,19 @@ export default function ManageDoctors() {
       });
 
       if (response.ok) {
+        await showSuccess('Doctor deleted successfully', 'The doctor account has been removed.');
         setSuccess('Doctor deleted successfully!');
-        if (token) {
-          fetchDoctors(token);
-        }
+        if (token) fetchDoctors(token);
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Failed to delete doctor');
+        const msg = errorData.detail || 'Failed to delete doctor';
+        setError(msg);
+        await showError('Delete failed', msg);
       }
     } catch (err) {
-      setError('Connection error. Make sure backend is running.');
+      const msg = 'Connection error. Make sure backend is running.';
+      setError(msg);
+      await showError('Delete failed', msg);
     }
   };
 
@@ -245,11 +264,12 @@ export default function ManageDoctors() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
-                    minLength={6}
+                    minLength={8}
+                    maxLength={12}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all outline-none text-gray-900"
-                    placeholder="Minimum 6 characters"
+                    placeholder="8–12 characters"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Doctor will use this email and password to login</p>
+                  <p className="text-xs text-gray-500 mt-1">8–12 characters. Doctor will use this to login.</p>
                 </div>
               </div>
 

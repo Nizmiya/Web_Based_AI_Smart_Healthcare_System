@@ -13,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { label: "Patients", href: "/admin/patients" },
         { label: "Doctors", href: "/admin/doctors" },
         { label: "Reports", href: "/admin/reports" },
+        { label: "Audit Log", href: "/admin/audit" },
         { label: "ML Models", href: "/admin/models" },
         { label: "Settings", href: "/admin/settings" },
         { label: "Alerts", href: "/admin/alerts" },

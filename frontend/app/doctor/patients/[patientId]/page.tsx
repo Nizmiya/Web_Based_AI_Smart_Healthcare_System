@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { validateRequired } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 export default function DoctorPatientProfilePage() {
   const router = useRouter();
@@ -47,16 +49,23 @@ export default function DoctorPatientProfilePage() {
 
   const handleAddRemark = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!remark.trim()) return;
+    const err = validateRequired(remark, 'Remark');
+    if (err) {
+      setMessage({ type: 'error', text: err });
+      await showError('Required field', 'Please enter a remark before submitting.');
+      return;
+    }
     setSavingRemark(true);
     setMessage({ type: '', text: '' });
     try {
       await api.users.addPatientRemark(patientId, remark.trim());
+      await showSuccess('Remark added successfully', 'The remark has been saved to the patient profile.');
       setRemark('');
       setMessage({ type: 'success', text: 'Remark added successfully.' });
       loadProfile();
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to add remark.' });
+      await showError('Submit failed', 'Failed to add remark. Please try again.');
     } finally {
       setSavingRemark(false);
     }

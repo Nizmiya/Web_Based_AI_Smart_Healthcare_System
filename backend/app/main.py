@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from app.api.v1 import auth, predictions, users, notifications, patient_records, chatbot, consultations
+from app.api.v1 import auth, predictions, users, notifications, patient_records, chatbot, consultations, doctor_availability
 from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection
 
@@ -98,6 +98,7 @@ app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["
 app.include_router(patient_records.router, prefix="/api/v1/patient-records", tags=["Patient Records"])
 app.include_router(chatbot.router, prefix="/api/v1/chatbot", tags=["Chatbot"])
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])
+app.include_router(doctor_availability.router, prefix="/api/v1/doctor-availability", tags=["Doctor Availability"])
 
 # Admin router
 from app.api.v1 import admin

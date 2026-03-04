@@ -13,6 +13,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
         { label: "Reviews", href: "/doctor/reviews" },
         { label: "Patients", href: "/doctor/patients" },
         { label: "Consultations", href: "/doctor/consultations" },
+        { label: "Leave", href: "/doctor/leave" },
         { label: "Alerts", href: "/doctor/alerts" },
       ]}
     >

@@ -34,6 +34,7 @@
     "react-pdf": "^7.6.0",
     "recharts": "^2.10.3",
     "socket.io-client": "^4.5.4",
+    "sweetalert2": "^11.26.21",
     "tailwind-merge": "^2.1.0",
     "tailwindcss-animate": "^1.0.7",
     "zustand": "^4.4.7"

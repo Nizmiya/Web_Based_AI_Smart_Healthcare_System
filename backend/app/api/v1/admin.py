@@ -221,7 +221,7 @@ async def get_reports_summary(
     admin_user: dict = Depends(require_admin),
     db=Depends(get_database)
 ):
-    """Get prediction and user statistics for admin dashboard (Admin only)."""
+    """Get prediction, user, and consultation statistics for admin dashboard (Admin only)."""
     total_patients = await db.users.count_documents({"role": "patient"})
     total_doctors = await db.users.count_documents({"role": "doctor"})
     total_predictions = await db.predictions.count_documents({})
@@ -231,15 +231,51 @@ async def get_reports_summary(
     by_disease = {}
     for dtype in ["diabetes", "heart_disease", "kidney_disease"]:
         by_disease[dtype] = await db.predictions.count_documents({"disease_type": dtype})
+    total_consultations = await db.consultations.count_documents({})
+    consultations_completed = await db.consultations.count_documents({"status": "completed"})
+    consultations_scheduled = await db.consultations.count_documents({"status": "scheduled"})
     return {
         "total_patients": total_patients,
         "total_doctors": total_doctors,
         "total_predictions": total_predictions,
         "high_risk_predictions": high_risk,
         "predictions_by_disease": by_disease,
+        "total_consultations": total_consultations,
+        "consultations_completed": consultations_completed,
+        "consultations_scheduled": consultations_scheduled,
     }
 
 # ----- ML Models list -----
+# ----- Audit log (Admin only) -----
+@router.get("/audit-logs")
+async def get_audit_logs(
+    admin_user: dict = Depends(require_admin),
+    limit: int = 100,
+    skip: int = 0,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    patient_id: Optional[str] = None,
+    db=Depends(get_database)
+):
+    """Get audit log entries – who accessed what and when (Admin only)."""
+    query = {}
+    if user_id:
+        try:
+            query["user_id"] = str(user_id)
+        except Exception:
+            pass
+    if action:
+        query["action"] = action
+    if patient_id:
+        query["patient_id"] = patient_id
+    cursor = db.audit_logs.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    items = await cursor.to_list(length=limit)
+    for item in items:
+        item["id"] = str(item["_id"])
+        item.pop("_id", None)
+    total = await db.audit_logs.count_documents(query)
+    return {"logs": items, "total": total}
+
 @router.get("/models")
 async def list_ml_models(
     admin_user: dict = Depends(require_admin),

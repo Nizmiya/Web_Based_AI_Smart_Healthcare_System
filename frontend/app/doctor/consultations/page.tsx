@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { validateRequired } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 export default function DoctorConsultationsPage() {
   const router = useRouter();
@@ -50,8 +52,12 @@ export default function DoctorConsultationsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patient_id || !form.scheduled_at) {
-      setMessage({ type: 'error', text: 'Please select patient and date.' });
+    const patientErr = validateRequired(form.patient_id, 'Patient');
+    const dateErr = validateRequired(form.scheduled_at, 'Date & time');
+    if (patientErr || dateErr) {
+      const text = patientErr || dateErr;
+      setMessage({ type: 'error', text });
+      await showError('Please fill required fields', text);
       return;
     }
     setSaving(true);
@@ -62,23 +68,51 @@ export default function DoctorConsultationsPage() {
         scheduled_at: new Date(form.scheduled_at).toISOString(),
         notes: form.notes || undefined,
       });
+      await showSuccess('Consultation scheduled successfully', 'The appointment has been created.');
       setMessage({ type: 'success', text: 'Consultation scheduled.' });
       setForm({ patient_id: '', scheduled_at: '', notes: '' });
       setShowForm(false);
       loadData();
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to schedule consultation.' });
+      await showError('Submit failed', 'Failed to schedule consultation. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState({ notes: '', doctor_private_notes: '' });
+
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await api.consultations.update(id, { status });
+      await showSuccess('Status updated successfully', `Consultation marked as ${status}.`);
       loadData();
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to update status.' });
+      await showError('Update failed', 'Failed to update status. Please try again.');
+    }
+  };
+
+  const openEditNotes = (c: any) => {
+    setEditingId(c.id);
+    setEditNotes({ notes: c.notes || '', doctor_private_notes: c.doctor_private_notes || '' });
+  };
+
+  const handleSaveNotes = async () => {
+    if (!editingId) return;
+    try {
+      await api.consultations.update(editingId, {
+        notes: editNotes.notes,
+        doctor_private_notes: editNotes.doctor_private_notes,
+      });
+      await showSuccess('Notes saved successfully', 'Consultation notes have been updated.');
+      setEditingId(null);
+      loadData();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to save notes.' });
+      await showError('Save failed', 'Failed to save notes. Please try again.');
     }
   };
 
@@ -208,12 +242,18 @@ export default function DoctorConsultationsPage() {
                           {c.status}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 space-x-2">
+                        <button
+                          onClick={() => openEditNotes(c)}
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          Edit notes
+                        </button>
                         {c.status === 'scheduled' && (
                           <>
                             <button
                               onClick={() => handleStatusChange(c.id, 'completed')}
-                              className="text-green-600 hover:underline text-sm mr-3"
+                              className="text-green-600 hover:underline text-sm"
                             >
                               Mark completed
                             </button>
@@ -232,6 +272,48 @@ export default function DoctorConsultationsPage() {
               </table>
             </div>
           )}
+
+        {editingId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Consultation notes (private notes only you see)</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (visible to patient)</label>
+                  <textarea
+                    value={editNotes.notes}
+                    onChange={(e) => setEditNotes((n) => ({ ...n, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Private notes (doctor/admin only)</label>
+                  <textarea
+                    value={editNotes.doctor_private_notes}
+                    onChange={(e) => setEditNotes((n) => ({ ...n, doctor_private_notes: e.target.value }))}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={handleSaveNotes}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingId(null)}
+                  className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
       </main>
     </div>

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { validateRequired, validateEmail, validatePhone10 } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 export default function PatientProfilePage() {
   const router = useRouter();
@@ -70,16 +72,23 @@ export default function PatientProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
     setSuccess('');
-
+    const nameErr = validateRequired(profile.full_name, 'Full name');
+    const emailErr = validateEmail(profile.email);
+    const phoneErr = validatePhone10(profile.phone);
+    const err = nameErr || emailErr || phoneErr;
+    if (err) {
+      setError(err);
+      await showError('Please fix the form', err);
+      return;
+    }
+    setSaving(true);
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/login');
       return;
     }
-
     try {
       await api.users.updateProfile({
         full_name: profile.full_name,
@@ -93,6 +102,7 @@ export default function PatientProfilePage() {
         allergies: profile.allergies,
         current_medications: profile.current_medications,
       });
+      await showSuccess('Profile updated successfully', 'Your changes have been saved.');
       setSuccess('Profile updated successfully');
       const userData = localStorage.getItem('user');
       if (userData) {
@@ -105,7 +115,9 @@ export default function PatientProfilePage() {
         }));
       }
     } catch (err) {
-      setError('Connection error. Make sure backend is running.');
+      const msg = 'Connection error. Make sure backend is running.';
+      setError(msg);
+      await showError('Update failed', msg);
     } finally {
       setSaving(false);
     }

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import VideoRecommendations from '@/components/VideoRecommendations';
 import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { validateRequiredNumber, firstError } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -42,15 +44,25 @@ export default function HeartDiseasePrediction() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
-
+    const validationErr = firstError(
+      validateRequiredNumber(formData.age, 'Age', 1, 120),
+      validateRequiredNumber(formData.resting_bp, 'Resting blood pressure', 0, 300),
+      validateRequiredNumber(formData.serum_cholesterol, 'Serum cholesterol', 0, 600),
+      validateRequiredNumber(formData.max_heart_rate, 'Max heart rate', 0, 250),
+      validateRequiredNumber(formData.st_depression, 'ST depression', 0, 10),
+    );
+    if (validationErr) {
+      setError(validationErr);
+      await showError('Please fill all required fields', validationErr);
+      return;
+    }
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/login');
       return;
     }
-
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/v1/predictions/heart-disease`, {
         method: 'POST',
@@ -78,13 +90,17 @@ export default function HeartDiseasePrediction() {
       if (response.ok) {
         const data = await response.json();
         setResult(data);
-        // Parameters are automatically saved to patient_records by backend
+        await showSuccess('Prediction completed', 'Your heart disease risk assessment result is ready.');
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Prediction failed');
+        const msg = errorData.detail || 'Prediction failed';
+        setError(msg);
+        await showError('Prediction failed', msg);
       }
     } catch (err) {
-      setError('Connection error. Make sure backend is running.');
+      const msg = 'Connection error. Make sure backend is running.';
+      setError(msg);
+      await showError('Connection error', msg);
     } finally {
       setLoading(false);
     }

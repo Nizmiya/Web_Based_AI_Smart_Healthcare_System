@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSelector from '@/components/LanguageSelector';
 import { API_URL } from '@/lib/api';
+import { validateRequired, validateEmail, validatePhone10Required, validatePassword } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 export default function LoginPage() {
   const { t } = useLanguage();
@@ -23,10 +25,15 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
-
+    const emailErr = validateEmail(email);
+    const pwdErr = validateRequired(password, 'Password');
+    if (emailErr || pwdErr) {
+      setError(emailErr || pwdErr || 'Please fill all required fields.');
+      return;
+    }
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
@@ -43,7 +50,7 @@ export default function LoginPage() {
         const data = await response.json();
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
+        await showSuccess('Login successful', 'Redirecting to your dashboard...');
         const userRole = data.user.role;
         if (userRole === 'admin') {
           router.push('/admin/dashboard');
@@ -54,9 +61,11 @@ export default function LoginPage() {
         }
       } else {
         const errorData = await response.json();
+        await showError('Login failed', errorData.detail || t('error') + ': Login failed');
         setError(errorData.detail || t('error') + ': Login failed');
       }
     } catch (err) {
+      await showError('Connection error', 'Make sure backend is running.');
       setError('Connection error. Make sure backend is running.');
     } finally {
       setLoading(false);
@@ -65,22 +74,19 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
-
-    // Validate password length
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      setLoading(false);
+    const fullNameErr = validateRequired(fullName, 'Full name');
+    const emailErr = validateEmail(email);
+    const phoneErr = validatePhone10Required(phone);
+    const pwdErr = validatePassword(password, 8, 12);
+    const err = fullNameErr || emailErr || phoneErr || pwdErr;
+    if (err) {
+      setError(err);
+      await showError('Please fill required fields', err);
       return;
     }
-    if (password.length > 72) {
-      setError('Password cannot be longer than 72 characters');
-      setLoading(false);
-      return;
-    }
-
+    setLoading(true);
     try {
       const requestBody = {
         email,
@@ -105,34 +111,31 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Registration successful:', data);
+        await showSuccess('Account created successfully!', 'Please login with your email and password.');
         setSuccess('Account created successfully! Please login.');
-        setTimeout(() => {
-          setIsRegister(false);
-          setEmail('');
-          setPassword('');
-          setFullName('');
-          setPhone('');
-        }, 2000);
+        setIsRegister(false);
+        setEmail('');
+        setPassword('');
+        setFullName('');
+        setPhone('');
       } else {
         let errorData;
         try {
           errorData = await response.json();
-          console.error('Registration error response:', errorData);
-        } catch (parseError) {
+        } catch {
           const text = await response.text();
-          console.error('Registration error (non-JSON):', text);
           errorData = { detail: text || 'Registration failed' };
         }
-        setError(errorData.detail || `Registration failed (Status: ${response.status})`);
+        const msg = errorData.detail || `Registration failed (Status: ${response.status})`;
+        setError(msg);
+        await showError('Registration failed', msg);
       }
     } catch (err: any) {
-      console.error('Registration error:', err);
-      if (err.message && (err.message.includes('fetch') || err.message.includes('Failed to fetch'))) {
-        setError(`Cannot connect to backend. Make sure backend is running on ${API_URL}`);
-      } else {
-        setError('Registration failed: ' + (err.message || 'Unknown error'));
-      }
+      const msg = err.message && (err.message.includes('fetch') || err.message.includes('Failed to fetch'))
+        ? `Cannot connect to backend. Make sure backend is running on ${API_URL}`
+        : 'Registration failed: ' + (err.message || 'Unknown error');
+      setError(msg);
+      await showError('Registration failed', msg);
     } finally {
       setLoading(false);
     }
@@ -264,9 +267,11 @@ export default function LoginPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
+                  maxLength={15}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-900"
-                  placeholder="+1234567890"
+                  placeholder="10 digit mobile number"
                 />
+                <p className="text-xs text-gray-500 mt-0.5">Enter exactly 10 digits (numbers only)</p>
               </div>
 
               <div>
@@ -294,11 +299,11 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   minLength={8}
-                    maxLength={72}
+                    maxLength={12}
                   className="w-full px-4 py-2 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-900"
                     placeholder="At least 8 characters"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Password must be at least 8 characters</p>
+                  <p className="text-xs text-gray-500 mt-1">Password: 8–12 characters</p>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}

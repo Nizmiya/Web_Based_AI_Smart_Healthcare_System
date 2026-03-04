@@ -37,12 +37,14 @@ class DoctorRemarkCreate(BaseModel):
 
 @router.get("/profile")
 async def get_profile(current_user: dict = Depends(get_current_user), db=Depends(get_database)):
-    """Get user profile (includes medical_history, allergies, current_medications)"""
+    """Get user profile (includes medical_history, allergies, current_medications). Patients do not see doctor_remarks."""
     user = await db.users.find_one({"_id": current_user["_id"]})
     if user:
         user["id"] = str(user["_id"])
         user.pop("password", None)
         user.pop("_id", None)
+        if user.get("role") == "patient":
+            user.pop("doctor_remarks", None)
     return user
 
 @router.put("/profile")
@@ -64,7 +66,7 @@ async def get_patient_profile(
     current_user: dict = Depends(require_doctor_or_admin),
     db=Depends(get_database)
 ):
-    """Get a patient's profile (doctor/admin only). Includes doctor_remarks."""
+    """Get a patient's profile (doctor/admin only). Includes doctor_remarks. Logged to audit."""
     try:
         oid = ObjectId(patient_id)
     except Exception:
@@ -72,10 +74,14 @@ async def get_patient_profile(
     user = await db.users.find_one({"_id": oid, "role": "patient"})
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    from app.core.audit import log_audit
+    await log_audit(
+        db, current_user["id"], current_user.get("role", ""),
+        "view_patient_profile", "patient", patient_id,
+    )
     user["id"] = str(user["_id"])
     user.pop("password", None)
     user.pop("_id", None)
-    # Include assigned_doctor_id as string if present
     if user.get("assigned_doctor_id"):
         user["assigned_doctor_id"] = str(user["assigned_doctor_id"])
     return user
@@ -132,16 +138,47 @@ async def get_all_users(
 @router.get("/patients")
 async def get_all_patients(
     current_user: dict = Depends(get_current_user),
+    search: Optional[str] = None,
+    assigned_doctor_id: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    limit: int = 500,
     db=Depends(get_database)
 ):
-    """Get all patients (Doctor and Admin only)"""
+    """Get all patients (Doctor and Admin only). Optional: search (name/email), assigned_doctor_id, risk_level (High/Critical), sort_by (name/created_at)."""
     if current_user.get("role") not in ("doctor", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only doctors and admins can list patients"
         )
-    patients = await db.users.find({"role": "patient"}).to_list(length=1000)
-    
+    query = {"role": "patient"}
+    if search and search.strip():
+        s = search.strip()
+        query["$or"] = [
+            {"full_name": {"$regex": s, "$options": "i"}},
+            {"email": {"$regex": s, "$options": "i"}},
+            {"phone": {"$regex": s, "$options": "i"}},
+        ]
+    if assigned_doctor_id:
+        try:
+            query["assigned_doctor_id"] = ObjectId(assigned_doctor_id)
+        except Exception:
+            pass
+    patients = await db.users.find(query).to_list(length=limit * 2)
+    if risk_level and risk_level.strip():
+        high_risk_levels = [rl.strip() for rl in risk_level.split(",") if rl.strip()]
+        if high_risk_levels:
+            high_risk_user_ids = await db.predictions.distinct(
+                "user_id",
+                {"risk_level": {"$in": high_risk_levels}}
+            )
+            high_risk_set = set(str(uid) for uid in high_risk_user_ids)
+            patients = [p for p in patients if str(p["_id"]) in high_risk_set]
+    if sort_by == "name":
+        patients.sort(key=lambda p: (p.get("full_name") or "").lower())
+    elif sort_by == "created_at":
+        patients.sort(key=lambda p: p.get("created_at") or datetime.min, reverse=True)
+    patients = patients[:limit]
     result = []
     for patient in patients:
         patient["id"] = str(patient["_id"])
@@ -149,7 +186,7 @@ async def get_all_patients(
             patient["assigned_doctor_id"] = str(patient["assigned_doctor_id"])
         patient.pop("password", None)
         patient.pop("_id", None)
+        patient.pop("doctor_remarks", None)
         result.append(patient)
-    
     return result
 

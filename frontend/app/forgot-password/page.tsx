@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSelector from '@/components/LanguageSelector';
 import { api } from '@/lib/api';
+import { validateEmail, validateRequired, validatePassword, validatePasswordMatch } from '@/lib/validations';
+import { showSuccess, showError } from '@/lib/alerts';
 
 type Step = 1 | 2 | 3;
 
@@ -25,15 +27,23 @@ export default function ForgotPasswordPage() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
-    setSuccess('');
+    const err = validateEmail(email);
+    if (err) {
+      setError(err);
+      await showError('Required field', err);
+      return;
+    }
+    setLoading(true);
     try {
       await api.auth.forgotPassword(email);
+      await showSuccess('OTP sent', 'Check your email for the verification code.');
       setSuccess(t('otpSent'));
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Failed to send code');
+      const msg = err.message || 'Failed to send code';
+      setError(msg);
+      await showError('Failed to send OTP', msg);
     } finally {
       setLoading(false);
     }
@@ -41,14 +51,23 @@ export default function ForgotPasswordPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    if (otpCode.trim().length !== 4) {
+      const msg = 'Please enter the 4-digit OTP from your email.';
+      setError(msg);
+      await showError('Invalid OTP', msg);
+      return;
+    }
+    setLoading(true);
     try {
       const data = await api.auth.verifyOtp(email, otpCode);
+      await showSuccess('OTP verified', 'Now set your new password.');
       setResetToken(data.reset_token);
       setStep(3);
     } catch (err: any) {
-      setError(err.message || 'Invalid code');
+      const msg = err.message || 'Invalid code';
+      setError(msg);
+      await showError('Verification failed', msg);
     } finally {
       setLoading(false);
     }
@@ -57,21 +76,28 @@ export default function ForgotPasswordPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    const pwdErr = validatePassword(newPassword, 8, 12);
+    if (pwdErr) {
+      setError(pwdErr);
+      await showError('Validation failed', pwdErr);
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+    const matchErr = validatePasswordMatch(newPassword, confirmPassword);
+    if (matchErr) {
+      setError(matchErr);
+      await showError('Validation failed', matchErr);
       return;
     }
     setLoading(true);
     try {
       await api.auth.resetPassword(email, newPassword, resetToken || undefined);
+      await showSuccess('Password reset successfully', 'Redirecting to login...');
       setSuccess(t('passwordResetSuccess'));
-      setTimeout(() => router.push('/login'), 2000);
+      setTimeout(() => router.push('/login'), 1500);
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password');
+      const msg = err.message || 'Failed to reset password';
+      setError(msg);
+      await showError('Reset failed', msg);
     } finally {
       setLoading(false);
     }
@@ -183,9 +209,10 @@ export default function ForgotPasswordPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
+                    maxLength={12}
                     className="w-full px-4 py-2 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900"
-                    placeholder="At least 6 characters"
+                    placeholder="8–12 characters"
                   />
                   <button
                     type="button"
@@ -208,7 +235,8 @@ export default function ForgotPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
+                  maxLength={12}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900"
                   placeholder="Confirm new password"
                 />

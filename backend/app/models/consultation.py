@@ -13,8 +13,10 @@ class ConsultationCreate(BaseModel):
     patient_id: str
     scheduled_at: datetime
     notes: Optional[str] = None
+    doctor_private_notes: Optional[str] = None  # Doctor/admin only, never shown to patient
 
 class ConsultationUpdate(BaseModel):
     scheduled_at: Optional[datetime] = None
     status: Optional[ConsultationStatus] = None
     notes: Optional[str] = None
+    doctor_private_notes: Optional[str] = None  # Doctor/admin only

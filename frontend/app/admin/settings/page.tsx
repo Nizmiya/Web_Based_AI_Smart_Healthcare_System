@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { showSuccess, showError } from '@/lib/alerts';
 
 const defaultSettings = {
   systemName: 'Smart Healthcare System',
@@ -60,13 +61,13 @@ export default function SystemSettings() {
     setSaving(true);
     setSuccess('');
     setError('');
-
     try {
       await api.admin.updateSettings(settings);
+      await showSuccess('Settings saved successfully', 'Your changes have been applied.');
       setSuccess('Settings saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to save settings');
+      await showError('Save failed', 'Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
