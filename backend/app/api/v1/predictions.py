@@ -91,7 +91,7 @@ VIDEO_RECOMMENDATIONS = {
             },
             {
                 "title": "Low risk: balanced plate for blood sugar",
-                "url": "https://www.youtube.com/watch?v=J1St2D2fDtQ",
+                "url": "https://www.youtube.com/watch?v=Vu883MTjrA4",
                 "category": "food"
             }
         ],
@@ -847,7 +847,7 @@ async def predict_diabetes(
             doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
             for doctor in doctors:
                 doctor_notification = {
-                    "user_id": doctor["_id"],
+                    "user_id": str(doctor["_id"]),
                     "type": "high_risk",
                     "title": f"High Risk Patient Alert",
                     "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
@@ -981,7 +981,7 @@ async def predict_heart_disease(
             doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
             for doctor in doctors:
                 doctor_notification = {
-                    "user_id": doctor["_id"],
+                    "user_id": str(doctor["_id"]),
                     "type": "high_risk",
                     "title": f"High Risk Patient Alert",
                     "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
@@ -1148,7 +1148,7 @@ async def predict_kidney_disease(
             doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
             for doctor in doctors:
                 doctor_notification = {
-                    "user_id": doctor["_id"],
+                    "user_id": str(doctor["_id"]),
                     "type": "high_risk",
                     "title": f"High Risk Patient Alert",
                     "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
@@ -1303,6 +1303,13 @@ async def add_doctor_review(
         {"_id": pred_oid},
         {"$set": {"doctor_review": doctor_review, "reviewed": True}}
     )
+
+    # Remove doctor's high_risk alert for this prediction (alert disappears after review)
+    await db.notifications.delete_many({
+        "user_id": current_user["id"],
+        "type": "high_risk",
+        "prediction_id": prediction_id
+    })
 
     if review.send_to_patient:
         patient_id = prediction.get("user_id")

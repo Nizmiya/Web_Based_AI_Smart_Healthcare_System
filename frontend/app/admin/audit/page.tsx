@@ -85,7 +85,7 @@ export default function AdminAuditPage() {
                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase">User ID</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase">Role</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase">Action</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase">Patient ID</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase">Patient Name</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -97,7 +97,7 @@ export default function AdminAuditPage() {
                       <td className="py-3 px-4 text-sm font-mono text-gray-800">{log.user_id?.slice(0, 8)}...</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{log.role}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{log.action}</td>
-                      <td className="py-3 px-4 text-sm font-mono text-gray-600">{log.patient_id || '—'}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700">{log.patient_name || log.patient_id || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -119,6 +119,8 @@ async def register(user_data: UserCreate, db=Depends(get_database)):
             "is_active": True,
             "created_at": datetime.utcnow()
         }
+        if user_data.address is not None and user_data.address.strip():
+            user_dict["address"] = user_data.address.strip()
         
         # Insert into database
         print(f"💾 Inserting user into database...")

@@ -29,7 +29,7 @@ export async function showValidationError(message: string) {
   return showError('Validation Failed', message);
 }
 
-export async function showConfirm(title: string, text: string, confirmText = 'Yes, proceed') {
+export async function showConfirm(title: string, text: string, confirmText = 'Yes, proceed', cancelText = 'Cancel') {
   const result = await Swal.fire({
     icon: 'warning',
     title,
@@ -38,6 +38,7 @@ export async function showConfirm(title: string, text: string, confirmText = 'Ye
     confirmButtonColor: '#2563eb',
     cancelButtonColor: '#6b7280',
     confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
   });
   return result.isConfirmed;
 }

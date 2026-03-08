@@ -37,18 +37,26 @@ export default function Home() {
     }
   };
 
+  const heroBgImage = '/Home.jpg';
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 relative overflow-hidden">
+    <main className="min-h-screen bg-slate-800 relative overflow-hidden">
+      {/* Hero background: hospital / medical scene */}
+      <div
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${heroBgImage})` }}
+        aria-hidden
+      />
+      <div className="fixed inset-0 z-0 bg-black/35" aria-hidden />
+
       {/* Navigation Bar - Professional Medical Design */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b-2 border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg flex items-center justify-center shadow-md">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md overflow-hidden bg-white p-1">
+                  <img src="/hospital-svgrepo-com.svg" alt="Hospital" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <span className="text-gray-800 font-bold text-xl">{t('smartHealthcare')}</span>
@@ -86,7 +94,7 @@ export default function Home() {
               <LanguageSelector />
               <Link
                 href="/login"
-                className="bg-gradient-to-r from-blue-600 to-teal-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:from-blue-700 hover:to-teal-600 transition-all shadow-md hover:shadow-lg"
+                className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
               >
                 {t('login')}
               </Link>
@@ -95,33 +103,24 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
-
       {/* Home Section */}
-      <section id="home" className="relative z-10 min-h-screen flex items-center justify-center p-8 pt-32">
-        <div className="text-center max-w-6xl mx-auto">
+      <section id="home" className="relative z-10 min-h-screen flex items-center justify-center p-8 pt-32 scroll-mt-0">
+        <div className="text-center max-w-6xl mx-auto px-6 py-10 rounded-2xl bg-black/20 backdrop-blur-sm">
           {/* Logo/Icon - Hospital Icon */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-full mb-6 shadow-2xl border-4 border-blue-100">
-              <svg className="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+            <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-full mb-6 shadow-2xl border-4 border-blue-100 p-4">
+              <img src="/hospital-svgrepo-com.svg" alt="Hospital" className="w-full h-full object-contain" />
             </div>
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-6xl md:text-7xl font-bold mb-6 text-white drop-shadow-lg">
+          <h1 className="text-6xl md:text-7xl font-bold mb-6 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             {t('smartHealthcare')}
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-4 font-light">
+          <p className="text-xl md:text-2xl text-white mb-4 font-light drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
             {t('aiPowered')}
           </p>
-          <p className="text-lg text-white/80 mb-12 max-w-2xl mx-auto">
+          <p className="text-lg text-white mb-12 max-w-2xl mx-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
             Advanced risk assessment and personalized health recommendations for Diabetes, Heart Disease, and Kidney Disease
           </p>
           
@@ -135,7 +134,7 @@ export default function Home() {
           </Link>
             <button
               onClick={() => scrollToSection('instructions')}
-              className="inline-block bg-teal-500 text-white border-2 border-teal-400 px-10 py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all duration-300 transform hover:scale-105 shadow-xl"
+              className="inline-block bg-[#FFA500] text-white border-2 border-[#e69500] px-10 py-4 rounded-xl font-bold text-lg hover:bg-[#e69500] transition-all duration-300 transform hover:scale-105 shadow-xl"
             >
               {t('instructions')}
             </button>
@@ -175,68 +174,68 @@ export default function Home() {
       </section>
 
       {/* About Us Section */}
-      <section id="about" className="relative z-10 min-h-screen flex items-center justify-center p-8 py-20 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-bold text-gray-800 mb-4">{t('aboutUs')}</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+      <section id="about" className="relative z-10 min-h-screen flex flex-col justify-center p-6 py-16 bg-white scroll-mt-20">
+        <div className="max-w-6xl mx-auto w-full">
+          <div className="text-center mb-4">
+            <h2 className="text-4xl font-bold text-gray-800 mb-2">{t('aboutUs')}</h2>
+            <p className="text-base text-gray-600 max-w-3xl mx-auto">
               {t('aboutDesc')}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl border-2 border-blue-200 shadow-lg">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200 shadow-lg">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">{t('mission')}</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{t('mission')}</h3>
+              <p className="text-gray-700 text-sm leading-relaxed">
                 {t('missionDesc')}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-8 rounded-2xl border-2 border-teal-200 shadow-lg">
-              <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-5 rounded-xl border-2 border-teal-200 shadow-lg">
+              <div className="w-12 h-12 bg-teal-600 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-            </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">{t('vision')}</h3>
-              <p className="text-gray-700 leading-relaxed">
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{t('vision')}</h3>
+              <p className="text-gray-700 text-sm leading-relaxed">
                 {t('visionDesc')}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl border-2 border-green-200 shadow-lg">
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border-2 border-green-200 shadow-lg">
+              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mb-3">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">{t('technology')}</h3>
-              <p className="text-gray-700 leading-relaxed mb-4">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{t('technology')}</h3>
+              <p className="text-gray-700 text-sm leading-relaxed mb-2">
                 {t('technologyDesc')}
               </p>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">Random Forest</span>
-                <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-sm font-medium">Logistic Regression</span>
-                <span className="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">XGBoost</span>
-                <span className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm font-medium">Machine Learning</span>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">Decision Tree</span>
+                <span className="bg-teal-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">Gradient Boosting</span>
+                <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">XGBoost</span>
+                <span className="bg-gray-700 text-white px-2 py-0.5 rounded-full text-xs font-medium">ML</span>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-8 rounded-2xl border-2 border-purple-200 shadow-lg">
-              <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border-2 border-purple-200 shadow-lg">
+              <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">{t('team')}</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{t('team')}</h3>
+              <p className="text-gray-700 text-sm leading-relaxed">
                 {t('teamDesc')}
               </p>
             </div>
@@ -245,17 +244,17 @@ export default function Home() {
       </section>
 
       {/* Instructions Section */}
-      <section id="instructions" className="relative z-10 min-h-screen flex items-center justify-center p-8 py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-bold text-gray-800 mb-4">{t('instructionsTitle')}</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+      <section id="instructions" className="relative z-10 min-h-screen flex flex-col justify-center p-6 py-12 bg-gray-50 scroll-mt-20">
+        <div className="max-w-6xl mx-auto w-full">
+          <div className="text-center mb-4">
+            <h2 className="text-4xl font-bold text-gray-800 mb-2">{t('instructionsTitle')}</h2>
+            <p className="text-base text-gray-600 max-w-3xl mx-auto">
               {t('instructionsSubtitle')}
             </p>
           </div>
 
           {/* Steps */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {[
               { num: 1, title: t('instructionStep1'), desc: t('instructionStep1Desc'), icon: '📝', color: 'blue' },
               { num: 2, title: t('instructionStep2'), desc: t('instructionStep2Desc'), icon: '🔐', color: 'teal' },
@@ -274,17 +273,17 @@ export default function Home() {
               const colors = colorClasses[step.color as keyof typeof colorClasses] || colorClasses.blue;
               
               return (
-                <div key={step.num} className={`bg-white p-6 rounded-2xl border-2 ${colors.split(' ')[2]} shadow-lg hover:shadow-xl transition-all`}>
-                  <div className="flex items-start gap-4">
+                <div key={step.num} className={`bg-white p-4 rounded-xl border-2 ${colors.split(' ')[2]} shadow-lg hover:shadow-xl transition-all`}>
+                  <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${colors.split(' ')[0]} ${colors.split(' ')[1]} rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md`}>
+                      <div className={`w-10 h-10 bg-gradient-to-br ${colors.split(' ')[0]} ${colors.split(' ')[1]} rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md`}>
                         {step.num}
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="text-3xl mb-2">{step.icon}</div>
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">{step.title}</h3>
-                      <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-2xl mb-1">{step.icon}</div>
+                      <h3 className="text-base font-bold text-gray-800 mb-1">{step.title}</h3>
+                      <p className="text-gray-600 text-xs leading-relaxed">{step.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -293,33 +292,21 @@ export default function Home() {
           </div>
 
           {/* Important Notes */}
-          <div className="bg-amber-50 p-8 rounded-2xl border-2 border-amber-200 shadow-lg">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="bg-amber-50 p-4 rounded-xl border-2 border-amber-200 shadow-lg mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
               <span className="text-amber-600">⚠️</span>
               {t('importantNote')}
             </h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="text-amber-600 mt-1 font-bold">•</span>
-                <p className="text-gray-700">{t('note1')}</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-amber-600 mt-1 font-bold">•</span>
-                <p className="text-gray-700">{t('note2')}</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-amber-600 mt-1 font-bold">•</span>
-                <p className="text-gray-700">{t('note3')}</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-amber-600 mt-1 font-bold">•</span>
-                <p className="text-gray-700">{t('note4')}</p>
-                </div>
+            <div className="space-y-2 text-sm text-gray-700">
+              <div className="flex items-start gap-2"><span className="text-amber-600 font-bold">•</span><p>{t('note1')}</p></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 font-bold">•</span><p>{t('note2')}</p></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 font-bold">•</span><p>{t('note3')}</p></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 font-bold">•</span><p>{t('note4')}</p></div>
             </div>
           </div>
 
           {/* CTA */}
-          <div className="text-center mt-12">
+          <div className="text-center">
             <Link
               href="/login"
               className="inline-block bg-gradient-to-r from-blue-600 to-teal-500 text-white px-10 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-300 transform hover:scale-105 shadow-2xl"
@@ -335,10 +322,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden p-1">
+                <img src="/hospital-svgrepo-com.svg" alt="Hospital" className="w-full h-full object-contain" />
               </div>
               <div className="text-white text-sm">
                 © 2024 Smart Healthcare System. All rights reserved.

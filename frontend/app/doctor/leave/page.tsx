@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { validateRequired } from '@/lib/validations';
-import { showSuccess, showError } from '@/lib/alerts';
+import { showSuccess, showError, showConfirm } from '@/lib/alerts';
 
 export default function DoctorLeavePage() {
   const router = useRouter();
@@ -81,7 +81,13 @@ export default function DoctorLeavePage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Remove this leave entry?')) return;
+    const confirmed = await showConfirm(
+      'Remove leave?',
+      'Are you sure you want to remove this leave?',
+      'Yes',
+      'No'
+    );
+    if (!confirmed) return;
     try {
       await api.doctorAvailability.deleteLeave(id);
       await showSuccess('Leave removed', 'The leave entry has been deleted.');

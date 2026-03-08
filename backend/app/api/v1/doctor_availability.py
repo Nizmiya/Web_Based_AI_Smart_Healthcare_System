@@ -70,9 +70,14 @@ async def add_leave(
         "created_at": datetime.utcnow(),
     }
     result = await db.doctor_leaves.insert_one(doc)
-    doc["id"] = str(result.inserted_id)
-    doc["doctor_id"] = target_doctor_id
-    return doc
+    return {
+        "id": str(result.inserted_id),
+        "doctor_id": target_doctor_id,
+        "from_date": doc["from_date"],
+        "to_date": doc["to_date"],
+        "reason": doc["reason"],
+        "created_at": doc["created_at"].isoformat() if hasattr(doc.get("created_at"), "isoformat") else str(doc.get("created_at", "")),
+    }
 
 
 @router.get("/leave")
@@ -92,12 +97,22 @@ async def list_leaves(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid doctor_id")
 
+    def _serialize_leave(item: dict) -> dict:
+        fd = item.get("from_date")
+        td = item.get("to_date")
+        ca = item.get("created_at")
+        return {
+            "id": str(item["_id"]),
+            "doctor_id": str(item["doctor_id"]),
+            "from_date": fd if isinstance(fd, str) else (fd.isoformat() if hasattr(fd, "isoformat") else str(fd)) if fd else "",
+            "to_date": td if isinstance(td, str) else (td.isoformat() if hasattr(td, "isoformat") else str(td)) if td else "",
+            "reason": item.get("reason", ""),
+            "created_at": ca.isoformat() if ca and hasattr(ca, "isoformat") else str(ca) if ca else None,
+        }
+
     cursor = db.doctor_leaves.find(query).sort("from_date", -1)
-    items = await cursor.to_list(length=500)
-    for item in items:
-        item["id"] = str(item["_id"])
-        item["doctor_id"] = str(item["doctor_id"])
-        item.pop("_id", None)
+    raw = await cursor.to_list(length=500)
+    items = [_serialize_leave(item) for item in raw]
     return {"leaves": items}
 
 

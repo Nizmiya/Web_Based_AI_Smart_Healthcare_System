@@ -69,12 +69,6 @@ export default function PatientDashboard() {
     router.push('/login');
   };
 
-  const scrollToHighRiskDetails = () => {
-    if (highRiskSectionRef.current) {
-      highRiskSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    setHighRiskAlerts([]);
-  };
 
   if (!user) {
     return (
@@ -110,12 +104,12 @@ export default function PatientDashboard() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={scrollToHighRiskDetails}
-              className="bg-white text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-semibold transition-colors"
+            <Link
+              href="/patient/alerts"
+              className="bg-white text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-semibold transition-colors inline-block"
             >
               {t('viewDetails')}
-            </button>
+            </Link>
           </div>
         </div>
       )}

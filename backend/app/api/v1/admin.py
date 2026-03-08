@@ -269,10 +269,30 @@ async def get_audit_logs(
     if patient_id:
         query["patient_id"] = patient_id
     cursor = db.audit_logs.find(query).sort("created_at", -1).skip(skip).limit(limit)
-    items = await cursor.to_list(length=limit)
-    for item in items:
-        item["id"] = str(item["_id"])
-        item.pop("_id", None)
+    raw = await cursor.to_list(length=limit)
+    items = []
+    for item in raw:
+        patient_name = None
+        pid = item.get("patient_id") or (item.get("resource_id") if item.get("resource_type") == "patient" else None)
+        if pid:
+            try:
+                oid = ObjectId(pid) if isinstance(pid, str) else pid
+                patient = await db.users.find_one({"_id": oid, "role": "patient"})
+                patient_name = patient.get("full_name") if patient else None
+            except Exception:
+                pass
+        items.append({
+            "id": str(item["_id"]),
+            "user_id": str(item.get("user_id", "")),
+            "role": item.get("role", ""),
+            "action": item.get("action", ""),
+            "resource_type": item.get("resource_type"),
+            "resource_id": str(item["resource_id"]) if item.get("resource_id") else None,
+            "patient_id": str(pid) if pid else None,
+            "patient_name": patient_name,
+            "details": item.get("details"),
+            "created_at": item.get("created_at").isoformat() if hasattr(item.get("created_at"), "isoformat") else item.get("created_at"),
+        })
     total = await db.audit_logs.count_documents(query)
     return {"logs": items, "total": total}
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
+import { showSuccess, showError } from '@/lib/alerts';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -140,11 +141,16 @@ export default function DoctorReviewsPage() {
         }
       );
       if (response.ok) {
+        await showSuccess('Review sent successfully', 'Your review has been saved and the patient will be notified.');
         setPredictions((prev) => prev.filter((p) => p.id !== selectedPrediction.id));
         clearDraft();
+      } else {
+        const errData = await response.json();
+        await showError('Failed to send review', errData.detail || 'Please try again.');
       }
     } catch (err) {
       console.error('Failed to send review');
+      await showError('Failed to send review', 'Connection error. Please try again.');
     } finally {
       setSavingReview(false);
     }
@@ -319,7 +325,7 @@ export default function DoctorReviewsPage() {
                 value={commentDraft}
                 onChange={(e) => setCommentDraft(e.target.value)}
                 rows={4}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Add your review notes and recommendations..."
               />
               <div className="mt-3 flex items-center gap-2">

@@ -79,10 +79,18 @@ async def create_consultation(
         "created_at": datetime.utcnow(),
     }
     result = await db.consultations.insert_one(doc)
-    doc["id"] = str(result.inserted_id)
-    doc["patient_id"] = body.patient_id
-    doc["doctor_id"] = str(doctor_oid)
-    return doc
+    # Build JSON-serializable response (ObjectId and datetime must be converted)
+    doc.pop("_id", None)
+    return {
+        "id": str(result.inserted_id),
+        "patient_id": body.patient_id,
+        "doctor_id": str(doctor_oid),
+        "scheduled_at": doc["scheduled_at"].isoformat() if hasattr(doc.get("scheduled_at"), "isoformat") else doc.get("scheduled_at"),
+        "status": doc["status"],
+        "notes": doc["notes"],
+        "doctor_private_notes": doc["doctor_private_notes"],
+        "created_at": doc["created_at"].isoformat() if hasattr(doc.get("created_at"), "isoformat") else str(doc.get("created_at")),
+    }
 
 @router.get("")
 async def list_consultations(
