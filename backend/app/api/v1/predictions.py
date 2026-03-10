@@ -37,8 +37,7 @@ FALLBACK_RECOMMENDATIONS = {
         "Monitor key health metrics (weight, BP, glucose) periodically.",
         "Schedule routine checkups and follow preventive care guidance."
     ],
-    "Medium": [
-        "Consult a healthcare professional for personalized guidance.",
+    "Medium": [        "Consult a healthcare professional for personalized guidance.",
         "Reduce sugary, salty, and processed foods; focus on portion control.",
         "Increase physical activity gradually and aim for consistent routines.",
         "Track symptoms and risk factors to share during medical visits.",
@@ -114,8 +113,8 @@ VIDEO_RECOMMENDATIONS = {
                 "category": "exercise"
             },
             {
-                "title": "High risk: reduce sugar and refined carbs",
-                "url": "https://www.youtube.com/watch?v=of4j4E7uB64",
+                "title": "High risk: 25 foods for diabetics that lower blood sugar",
+                "url": "https://youtu.be/huzh8ODNxaA?si=1IOqgqmbQBJDXbEP",
                 "category": "food"
             }
         ],
@@ -331,19 +330,41 @@ def _normalize_probability(value: Optional[float]) -> Optional[float]:
     return numeric
 
 def get_risk_level(risk_value: float, disease_type: str, prediction: Optional[int] = None) -> str:
-    """Map risk value to risk level. Uses only threshold.json (saved from training).
-    If prediction=0 (No disease) -> Low. If prediction=1 (Yes): uses Youden threshold from threshold.json."""
+    """Map risk value (probability) to risk level using threshold.json.
+
+    - risk_value can be 0–1 or 0–100; we normalize.
+    - We do NOT force prediction=0 to Low anymore.
+    - Logic:
+        * If we have a best_threshold T from threshold.json:
+            prob < 0.5*T      -> Low
+            0.5*T <= prob < T -> Medium
+            T <= prob < 0.8   -> High
+            prob >= 0.8       -> Critical
+        * If no threshold is available:
+            prob < 0.25       -> Low
+            0.25–0.5          -> Medium
+            0.5–0.8           -> High
+            >= 0.8            -> Critical
+    """
     probability = _normalize_probability(risk_value)
     if probability is None:
         probability = 0.0
 
-    if prediction is not None and prediction == 0:
-        return "Low"
-
     best_threshold = _load_threshold_from_json(disease_type)
+    # If no threshold information, fall back to simple bins
     if best_threshold is None:
-        return "Medium"
-    if probability < best_threshold:
+        if probability < 0.25:
+            return "Low"
+        if probability < 0.5:
+            return "Medium"
+        if probability < 0.8:
+            return "High"
+        return "Critical"
+
+    low_cutoff = 0.5 * float(best_threshold)
+    if probability < low_cutoff:
+        return "Low"
+    if probability < float(best_threshold):
         return "Medium"
     if probability < 0.8:
         return "High"
@@ -778,8 +799,9 @@ async def predict_diabetes(
         probability = model.predict_proba(input_data)[0]
         risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
         
-        # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
-        risk_level = get_risk_level(risk_percentage, "diabetes", prediction=int(prediction))
+        # Determine risk level using probability + threshold.json
+        # (ignore raw 0/1 prediction here so that high-risk probabilities are not forced to "Low")
+        risk_level = get_risk_level(risk_percentage, "diabetes")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -912,8 +934,8 @@ async def predict_heart_disease(
         probability = model.predict_proba(input_data)[0]
         risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
         
-        # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
-        risk_level = get_risk_level(risk_percentage, "heart_disease", prediction=int(prediction))
+        # Determine risk level using probability + threshold.json only
+        risk_level = get_risk_level(risk_percentage, "heart_disease")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -1079,8 +1101,8 @@ async def predict_kidney_disease(
         probability = model.predict_proba(input_data)[0]
         risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
         
-        # Determine risk level (prediction=0 -> Low; prediction=1 -> use threshold.json or config)
-        risk_level = get_risk_level(risk_percentage, "kidney_disease", prediction=int(prediction))
+        # Determine risk level using probability + threshold.json only
+        risk_level = get_risk_level(risk_percentage, "kidney_disease")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -1311,19 +1333,45 @@ async def add_doctor_review(
         "prediction_id": prediction_id
     })
 
-    if review.send_to_patient:
-        patient_id = prediction.get("user_id")
-        if patient_id:
-            notification = {
-                "user_id": patient_id,
-                "type": "doctor_review",
-                "title": "Doctor Review Available",
-                "message": f"{doctor_review['doctor_name']} reviewed your {prediction.get('disease_type', 'prediction').replace('_', ' ')} result.",
-                "is_read": False,
-                "created_at": datetime.utcnow(),
-                "prediction_id": prediction_id
-            }
-            await db.notifications.insert_one(notification)
+    patient_id = prediction.get("user_id")
+    disease_label = prediction.get("disease_type", "prediction").replace("_", " ")
+
+    # Optional notification to patient
+    if review.send_to_patient and patient_id:
+        try:
+            await db.notifications.insert_one(
+                {
+                    "user_id": patient_id,
+                    "type": "doctor_review",
+                    "title": "Doctor Review Available",
+                    "message": f"{doctor_review['doctor_name']} reviewed your {disease_label} result.",
+                    "is_read": False,
+                    "created_at": datetime.utcnow(),
+                    "prediction_id": prediction_id,
+                }
+            )
+        except Exception:
+            pass
+
+    # Notify all admins that a high/critical risk prediction was reviewed
+    try:
+        admins = await db.users.find({"role": "admin"}).to_list(length=None)
+        for admin in admins:
+            await db.notifications.insert_one(
+                {
+                    "user_id": str(admin["_id"]),
+                    "type": "doctor_review_admin",
+                    "title": "High-risk Prediction Reviewed",
+                    "message": f"Doctor {doctor_review['doctor_name']} reviewed a {disease_label} prediction for patient {patient_id}.",
+                    "is_read": False,
+                    "created_at": datetime.utcnow(),
+                    "prediction_id": prediction_id,
+                    "patient_id": patient_id,
+                    "doctor_id": doctor_review["doctor_id"],
+                }
+            )
+    except Exception:
+        pass
 
     return {"message": "Review saved"}
 

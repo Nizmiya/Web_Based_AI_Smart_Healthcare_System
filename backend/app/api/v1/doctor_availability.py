@@ -70,6 +70,27 @@ async def add_leave(
         "created_at": datetime.utcnow(),
     }
     result = await db.doctor_leaves.insert_one(doc)
+
+    # Notify all admins about the new doctor leave
+    try:
+        admins = await db.users.find({"role": "admin"}).to_list(length=None)
+        for admin in admins:
+            await db.notifications.insert_one(
+                {
+                    "user_id": str(admin["_id"]),
+                    "type": "doctor_leave",
+                    "title": "Doctor Leave Submitted",
+                    "message": f"Doctor {doctor.get('full_name', 'Doctor')} has requested leave from {doc['from_date']} to {doc['to_date']}.",
+                    "is_read": False,
+                    "created_at": datetime.utcnow(),
+                    "doctor_id": str(doc_oid),
+                    "leave_id": str(result.inserted_id),
+                }
+            )
+    except Exception:
+        # Notification issues should not block leave creation
+        pass
+
     return {
         "id": str(result.inserted_id),
         "doctor_id": target_doctor_id,

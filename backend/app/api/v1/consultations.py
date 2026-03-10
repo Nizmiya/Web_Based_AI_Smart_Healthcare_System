@@ -79,6 +79,40 @@ async def create_consultation(
         "created_at": datetime.utcnow(),
     }
     result = await db.consultations.insert_one(doc)
+
+    # Create a notification for the patient about the new consultation
+    try:
+        await db.notifications.insert_one(
+            {
+                "user_id": str(patient_oid),
+                "type": "consultation",
+                "title": "New Consultation Scheduled",
+                "message": f"A new consultation has been scheduled with your doctor on {body.scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
+                "is_read": False,
+                "created_at": datetime.utcnow(),
+                "consultation_id": str(result.inserted_id),
+                "doctor_id": str(doctor_oid),
+            }
+        )
+        # Notify all admins as well
+        admins = await db.users.find({"role": "admin"}).to_list(length=None)
+        for admin in admins:
+            await db.notifications.insert_one(
+                {
+                    "user_id": str(admin["_id"]),
+                    "type": "consultation",
+                    "title": "Consultation Created",
+                    "message": f"A new consultation was created for patient {str(patient_oid)} by doctor {str(doctor_oid)} on {body.scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
+                    "is_read": False,
+                    "created_at": datetime.utcnow(),
+                    "consultation_id": str(result.inserted_id),
+                    "doctor_id": str(doctor_oid),
+                    "patient_id": str(patient_oid),
+                }
+            )
+    except Exception:
+        # Notification failures should not block consultation creation
+        pass
     # Build JSON-serializable response (ObjectId and datetime must be converted)
     doc.pop("_id", None)
     return {

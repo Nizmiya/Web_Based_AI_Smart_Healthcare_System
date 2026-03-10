@@ -43,6 +43,9 @@ async def get_profile(current_user: dict = Depends(get_current_user), db=Depends
         user["id"] = str(user["_id"])
         user.pop("password", None)
         user.pop("_id", None)
+        # Ensure any ObjectId fields are converted to strings for JSON responses
+        if user.get("assigned_doctor_id"):
+            user["assigned_doctor_id"] = str(user["assigned_doctor_id"])
         if user.get("role") == "patient":
             user.pop("doctor_remarks", None)
     return user
@@ -129,6 +132,9 @@ async def get_all_users(
     result = []
     for user in users:
         user["id"] = str(user["_id"])
+        # Convert any ObjectId fields to strings for JSON responses
+        if user.get("assigned_doctor_id"):
+            user["assigned_doctor_id"] = str(user["assigned_doctor_id"])
         user.pop("password", None)
         user.pop("_id", None)
         result.append(user)
