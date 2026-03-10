@@ -140,19 +140,19 @@ VIDEO_RECOMMENDATIONS = {
             },
             {
                 "title": "Low risk: Mediterranean diet basics",
-                "url": "https://www.youtube.com/watch?v=V4jA8B3S2XU",
+                "url": "https://youtu.be/DG64Mok_zAk?si=SRWE2HZQtIVWSn-8",
                 "category": "food"
             }
         ],
         "Medium": [
             {
                 "title": "Medium risk: safe cardio starter plan",
-                "url": "https://www.youtube.com/watch?v=Yim4--J44gk",
+                "url": "https://youtu.be/OWGXhg50EHI?si=7Z8gDrSNMimRvgRJ",
                 "category": "exercise"
             },
             {
                 "title": "Medium risk: reduce salt and saturated fat",
-                "url": "https://www.youtube.com/watch?v=zdG0-4pKWbg",
+                "url": "https://youtu.be/DG64Mok_zAk?si=SRWE2HZQtIVWSn-8",
                 "category": "food"
             }
         ],
@@ -190,7 +190,7 @@ VIDEO_RECOMMENDATIONS = {
             },
             {
                 "title": "Low risk: kidney-friendly meal tips",
-                "url": "https://www.youtube.com/watch?v=3C7M8t7g4G4",
+                "url": "https://youtu.be/CrT-jTmaYJk?si=Cuk-2jZXrciqEM0G",
                 "category": "food"
             }
         ],
@@ -796,12 +796,12 @@ async def predict_diabetes(
         
         # Make prediction
         prediction = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0]
-        risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
+        proba_vector = model.predict_proba(input_data)[0]
+        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]  # value in 0–1
+        risk_percentage = prob_value * 100
         
         # Determine risk level using probability + threshold.json
-        # (ignore raw 0/1 prediction here so that high-risk probabilities are not forced to "Low")
-        risk_level = get_risk_level(risk_percentage, "diabetes")
+        risk_level = get_risk_level(prob_value, "diabetes")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -841,7 +841,7 @@ async def predict_diabetes(
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(probability) * 100, 2),
+                "confidence": round(max(proba_vector) * 100, 2),
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -886,7 +886,7 @@ async def predict_diabetes(
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(probability) * 100, 2),
+            "confidence": round(max(proba_vector) * 100, 2),
             "video_recommendations": video_recommendations
         }
 
@@ -931,11 +931,12 @@ async def predict_heart_disease(
         
         # Make prediction
         prediction = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0]
-        risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
+        proba_vector = model.predict_proba(input_data)[0]
+        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]
+        risk_percentage = prob_value * 100
         
         # Determine risk level using probability + threshold.json only
-        risk_level = get_risk_level(risk_percentage, "heart_disease")
+        risk_level = get_risk_level(prob_value, "heart_disease")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -975,7 +976,7 @@ async def predict_heart_disease(
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(probability) * 100, 2),
+                "confidence": round(max(proba_vector) * 100, 2),
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -1020,7 +1021,7 @@ async def predict_heart_disease(
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(probability) * 100, 2),
+            "confidence": round(max(proba_vector) * 100, 2),
             "video_recommendations": video_recommendations
         }
 
@@ -1098,11 +1099,12 @@ async def predict_kidney_disease(
         
         # Make prediction
         prediction = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0]
-        risk_percentage = probability[1] * 100 if len(probability) > 1 else probability[0] * 100
+        proba_vector = model.predict_proba(input_data)[0]
+        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]
+        risk_percentage = prob_value * 100
         
         # Determine risk level using probability + threshold.json only
-        risk_level = get_risk_level(risk_percentage, "kidney_disease")
+        risk_level = get_risk_level(prob_value, "kidney_disease")
 
         # Generate disease-specific patient + doctor recommendations via Gemini
         recommendation, doctor_recommendation = await generate_ai_recommendations_with_doctor(
@@ -1142,7 +1144,7 @@ async def predict_kidney_disease(
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(probability) * 100, 2),
+                "confidence": round(max(proba_vector) * 100, 2),
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -1187,7 +1189,7 @@ async def predict_kidney_disease(
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(probability) * 100, 2),
+            "confidence": round(max(proba_vector) * 100, 2),
             "video_recommendations": video_recommendations
         }
 

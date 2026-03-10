@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # Gemini AI (optional) for recommendation generation
     GEMINI_API_KEY: str = config("GEMINI_API_KEY", default="")
-    GEMINI_MODEL: str = config("GEMINI_MODEL", default="gemini-pro")
+    GEMINI_MODEL: str = config("GEMINI_MODEL", default="gemini-2.0-flash")
     
     # Email (SMTP) - for forgot password OTP
     MAIL_HOST: str = config("MAIL_HOST", default="smtp.gmail.com")
