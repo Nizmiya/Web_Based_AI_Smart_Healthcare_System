@@ -8,6 +8,7 @@ import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { validateRequiredNumber, firstError } from '@/lib/validations';
 import { showSuccess, showError } from '@/lib/alerts';
+import { DIABETES_AUTO_FILL } from '@/lib/formPresets';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -22,16 +23,7 @@ const normalizeRecommendations = (value: any): string[] => {
 export default function DiabetesPrediction() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [formData, setFormData] = useState({
-    pregnancies: '',
-    glucose: '',
-    blood_pressure: '',
-    skin_thickness: '',
-    insulin: '',
-    bmi: '',
-    diabetes_pedigree_function: '',
-    age: '',
-  });
+  const [formData, setFormData] = useState(DIABETES_AUTO_FILL);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
@@ -198,16 +190,7 @@ export default function DiabetesPrediction() {
                 <button
                   onClick={() => {
                     setResult(null);
-                    setFormData({
-                      pregnancies: '',
-                      glucose: '',
-                      blood_pressure: '',
-                      skin_thickness: '',
-                      insulin: '',
-                      bmi: '',
-                      diabetes_pedigree_function: '',
-                      age: '',
-                    });
+                    setFormData(DIABETES_AUTO_FILL);
                   }}
                   className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg"
                 >

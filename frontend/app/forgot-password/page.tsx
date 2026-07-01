@@ -24,6 +24,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [sentToEmail, setSentToEmail] = useState('');
+  const [devOtpHint, setDevOtpHint] = useState('');
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,9 +37,22 @@ export default function ForgotPasswordPage() {
       return;
     }
     setLoading(true);
+    const targetEmail = email.trim().toLowerCase();
     try {
-      await api.auth.forgotPassword(email);
-      await showSuccess('OTP sent', 'Check your email for the verification code.');
+      const data = await api.auth.forgotPassword(targetEmail);
+      setSentToEmail(data.sent_to || targetEmail);
+      setOtpCode('');
+      if (data.dev_mode && data.dev_otp) {
+        setDevOtpHint(`Dev OTP: ${data.dev_otp}`);
+        setOtpCode(String(data.dev_otp));
+        await showSuccess('Dev OTP', 'Testing mode — code shown below.');
+      } else {
+        setDevOtpHint('');
+        await showSuccess(
+          'OTP sent',
+          `Check the inbox for ${data.sent_to || targetEmail} (and spam folder).`
+        );
+      }
       setSuccess(t('otpSent'));
       setStep(2);
     } catch (err: any) {
@@ -60,7 +75,7 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
-      const data = await api.auth.verifyOtp(email, otpCode);
+      const data = await api.auth.verifyOtp(email.trim().toLowerCase(), otpCode);
       await showSuccess('OTP verified', 'Now set your new password.');
       setResetToken(data.reset_token);
       setStep(3);
@@ -166,7 +181,16 @@ export default function ForgotPasswordPage() {
 
           {step === 2 && (
             <form onSubmit={handleVerifyOtp} className="space-y-3">
-              <p className="text-sm text-gray-600">{t('enterOtp')}</p>
+              <p className="text-sm text-gray-600">
+                {devOtpHint
+                  ? t('enterOtp')
+                  : `Enter the 4-digit code sent to ${sentToEmail || email}. Check inbox and spam.`}
+              </p>
+              {devOtpHint && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-900 text-sm p-3 rounded-lg font-medium text-center">
+                  {devOtpHint}
+                </div>
+              )}
               <div>
                 <label htmlFor="otp" className="block text-sm font-semibold text-gray-700 mb-0.5">OTP</label>
                 <input

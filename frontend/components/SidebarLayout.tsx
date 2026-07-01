@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   label: string;
   href: string;
+  badge?: number;
 };
 
 const themeClasses = {
@@ -92,7 +93,14 @@ export default function SidebarLayout({
                     active && t.activeBg
                   )}
                 >
-                  <Link href={item.href}>{item.label}</Link>
+                  <Link href={item.href} className="flex w-full items-center justify-between gap-2">
+                    <span>{item.label}</span>
+                    {item.badge != null && item.badge > 0 && (
+                      <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                  </Link>
                 </Button>
               );
             })}
@@ -121,7 +129,14 @@ export default function SidebarLayout({
                     active && t.activeBg
                   )}
                 >
-                  <Link href={item.href}>{item.label}</Link>
+                  <Link href={item.href} className="flex items-center gap-1.5">
+                    <span>{item.label}</span>
+                    {item.badge != null && item.badge > 0 && (
+                      <span className="min-w-[1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                  </Link>
                 </Button>
               );
             })}

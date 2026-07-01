@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -45,19 +45,26 @@ export const api = {
       const res = await fetch(`${API_URL}/api/v1/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
+      const data = await res.json().catch(() => ({ detail: 'Request failed' }));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(err.detail || 'Failed to send OTP');
+        const detail = data.detail;
+        const msg =
+          typeof detail === 'string'
+            ? detail
+            : Array.isArray(detail)
+              ? detail.map((d: { msg?: string }) => d.msg || '').join(', ')
+              : 'Failed to send OTP';
+        throw new Error(msg || 'Failed to send OTP');
       }
-      return res.json();
+      return data;
     },
     verifyOtp: async (email: string, otp_code: string) => {
       const res = await fetch(`${API_URL}/api/v1/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp_code }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp_code }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Request failed' }));
@@ -212,6 +219,18 @@ export const api = {
     deleteLeave: (leaveId: string) =>
       apiRequest(`/api/v1/doctor-availability/leave/${leaveId}`, { method: 'DELETE' }),
     listDoctorsWithLeaves: () => apiRequest('/api/v1/doctor-availability/doctors-with-leaves'),
+    getLeaveDetails: (leaveId: string) =>
+      apiRequest(`/api/v1/doctor-availability/leave/${leaveId}/details`),
+    reassignPatients: (body: {
+      from_doctor_id: string;
+      to_doctor_id: string;
+      patient_ids?: string[];
+      leave_id?: string;
+    }) =>
+      apiRequest('/api/v1/doctor-availability/reassign-patients', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
   consultations: {
     list: (params?: { patient_id?: string; status?: string }) => {

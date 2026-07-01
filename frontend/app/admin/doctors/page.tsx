@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 import { validateRequired, validateEmail, validatePhone10, validatePassword } from '@/lib/validations';
 import { showSuccess, showError, showConfirm } from '@/lib/alerts';
+import { DOCTOR_SPECIALIZATIONS, getSpecializationLabel } from '@/lib/specializations';
 
 export default function ManageDoctors() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function ManageDoctors() {
     full_name: '',
     phone: '',
     password: '',
+    specialization: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -70,7 +72,8 @@ export default function ManageDoctors() {
     const emailErr = validateEmail(formData.email);
     const phoneErr = formData.phone ? validatePhone10(formData.phone) : null;
     const pwdErr = validatePassword(formData.password, 8, 12);
-    const err = nameErr || emailErr || phoneErr || pwdErr;
+    const specErr = validateRequired(formData.specialization, 'Doctor specialization');
+    const err = nameErr || emailErr || phoneErr || pwdErr || specErr;
     if (err) {
       setError(err);
       await showError('Please fill required fields', err);
@@ -91,7 +94,7 @@ export default function ManageDoctors() {
       if (response.ok) {
         await showSuccess('Doctor added successfully', 'The new doctor can now login with the provided credentials.');
         setSuccess('Doctor added successfully!');
-        setFormData({ email: '', full_name: '', phone: '', password: '' });
+        setFormData({ email: '', full_name: '', phone: '', password: '', specialization: '' });
         setShowAddForm(false);
         if (token) fetchDoctors(token);
       } else {
@@ -178,7 +181,7 @@ export default function ManageDoctors() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              {showAddForm ? 'Cancel' : 'Add Doctor'}
+              {showAddForm ? 'Cancel' : 'Register Doctor'}
             </button>
           </div>
         </div>
@@ -212,7 +215,10 @@ export default function ManageDoctors() {
         {/* Add Doctor Form */}
         {showAddForm && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Add New Doctor</h2>
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Register Specialist Doctor</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Select which disease this doctor specializes in. High-risk alerts go only to the matching specialist.
+            </p>
             <form onSubmit={handleAddDoctor} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -254,6 +260,28 @@ export default function ManageDoctors() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all outline-none text-gray-900"
                     placeholder="+1234567890"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Doctor Specialization <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.specialization}
+                    onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all outline-none text-gray-900"
+                  >
+                    <option value="">Select specialization...</option>
+                    {DOCTOR_SPECIALIZATIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Example: Heart high alert → Cardiologist only | Diabetes → Endocrinologist | Kidney → Nephrologist
+                  </p>
                 </div>
 
                 <div>
@@ -299,13 +327,13 @@ export default function ManageDoctors() {
                   disabled={submitting}
                   className="bg-gradient-to-r from-green-600 to-teal-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
-                  {submitting ? 'Adding...' : 'Add Doctor'}
+                  {submitting ? 'Registering...' : 'Register Doctor'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddForm(false);
-                    setFormData({ email: '', full_name: '', phone: '', password: '' });
+                    setFormData({ email: '', full_name: '', phone: '', password: '', specialization: '' });
                     setError('');
                     setSuccess('');
                   }}
@@ -341,6 +369,7 @@ export default function ManageDoctors() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Phone</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Specialization</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
@@ -351,6 +380,7 @@ export default function ManageDoctors() {
                       <td className="py-4 px-4 text-gray-800 font-medium">{doctor.full_name}</td>
                       <td className="py-4 px-4 text-gray-600">{doctor.email}</td>
                       <td className="py-4 px-4 text-gray-600">{doctor.phone || 'N/A'}</td>
+                      <td className="py-4 px-4 text-gray-600">{getSpecializationLabel(doctor.specialization)}</td>
                       <td className="py-4 px-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           doctor.is_active 

@@ -1,7 +1,10 @@
 from pydantic_settings import BaseSettings
-from typing import List, Dict, Any
+from typing import List
 from decouple import config
-import json
+from pathlib import Path
+
+# Always load backend/.env regardless of process working directory
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     # Database
@@ -40,9 +43,13 @@ class Settings(BaseSettings):
     MAIL_PORT: int = config("MAIL_PORT", default=587, cast=int)
     MAIL_USER: str = config("MAIL_USER", default="")
     MAIL_PASS: str = config("MAIL_PASS", default="")
+    MAIL_FROM: str = config("MAIL_FROM", default="")
+    MAIL_USE_SSL: bool = config("MAIL_USE_SSL", default=False, cast=bool)
+    # false = OTP goes to user email inbox only (production flow)
+    MAIL_DEV_MODE: bool = config("MAIL_DEV_MODE", default=False, cast=bool)
     
     class Config:
-        env_file = ".env"
+        env_file = str(_ENV_FILE)
         case_sensitive = True
 
 settings = Settings()

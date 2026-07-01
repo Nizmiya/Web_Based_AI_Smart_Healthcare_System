@@ -10,6 +10,52 @@ from datetime import datetime
 router = APIRouter()
 
 
+def _doctor_display_name(name: str) -> str:
+    cleaned = (name or "Your doctor").strip()
+    if cleaned.lower().startswith("dr"):
+        return cleaned
+    return f"Dr. {cleaned}"
+
+
+def _serialize_consultation(item: dict, role: str) -> dict:
+    scheduled_at = item.get("scheduled_at")
+    created_at = item.get("created_at")
+    if scheduled_at and hasattr(scheduled_at, "isoformat"):
+        scheduled_at = scheduled_at.isoformat()
+    if created_at and hasattr(created_at, "isoformat"):
+        created_at = created_at.isoformat()
+    result = {
+        "id": str(item["_id"]),
+        "patient_id": str(item["patient_id"]),
+        "doctor_id": str(item["doctor_id"]),
+        "scheduled_at": scheduled_at,
+        "status": item.get("status"),
+        "notes": item.get("notes", ""),
+        "created_at": created_at,
+    }
+    if role != "patient":
+        result["doctor_private_notes"] = item.get("doctor_private_notes", "")
+    return result
+
+
+async def _attach_user_names(db, item: dict, role: str) -> dict:
+    try:
+        patient = await db.users.find_one({"_id": ObjectId(item["patient_id"])})
+        item["patient_name"] = patient.get("full_name", "Unknown") if patient else "Unknown"
+    except Exception:
+        item["patient_name"] = "Unknown"
+    try:
+        doctor = await db.users.find_one({"_id": ObjectId(item["doctor_id"])})
+        if doctor:
+            item["doctor_name"] = doctor.get("full_name", "Doctor")
+            item["doctor_specialization"] = doctor.get("specialization", "")
+        else:
+            item["doctor_name"] = "Doctor"
+            item["doctor_specialization"] = ""
+    except Exception:
+        item["doctor_name"] = "Doctor"
+        item["doctor_specialization"] = ""
+    return item
 @router.get("/stats")
 async def get_consultation_stats(
     current_user: dict = Depends(get_current_user),
@@ -80,14 +126,20 @@ async def create_consultation(
     }
     result = await db.consultations.insert_one(doc)
 
+    doctor_user = await db.users.find_one({"_id": doctor_oid})
+    doctor_name = _doctor_display_name(
+        doctor_user.get("full_name", "Your doctor") if doctor_user else "Your doctor"
+    )
+    scheduled_label = body.scheduled_at.strftime('%d/%m/%Y %I:%M %p')
+
     # Create a notification for the patient about the new consultation
     try:
         await db.notifications.insert_one(
             {
                 "user_id": str(patient_oid),
                 "type": "consultation",
-                "title": "New Consultation Scheduled",
-                "message": f"A new consultation has been scheduled with your doctor on {body.scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
+                "title": "New Doctor Consultation Scheduled",
+                "message": f"{doctor_name} scheduled a consultation for you on {scheduled_label}.",
                 "is_read": False,
                 "created_at": datetime.utcnow(),
                 "consultation_id": str(result.inserted_id),
@@ -102,7 +154,7 @@ async def create_consultation(
                     "user_id": str(admin["_id"]),
                     "type": "consultation",
                     "title": "Consultation Created",
-                    "message": f"A new consultation was created for patient {str(patient_oid)} by doctor {str(doctor_oid)} on {body.scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
+                    "message": f"{doctor_name} scheduled a consultation for {patient.get('full_name', 'patient')} on {scheduled_label}.",
                     "is_read": False,
                     "created_at": datetime.utcnow(),
                     "consultation_id": str(result.inserted_id),
@@ -157,19 +209,12 @@ async def list_consultations(
         query["status"] = status_filter
     cursor = db.consultations.find(query).sort("scheduled_at", -1).limit(limit)
     items = await cursor.to_list(length=limit)
-    for item in items:
-        item["id"] = str(item["_id"])
-        item["patient_id"] = str(item["patient_id"])
-        item["doctor_id"] = str(item["doctor_id"])
-        item.pop("_id", None)
-        if role == "patient":
-            item.pop("doctor_private_notes", None)
-        try:
-            u = await db.users.find_one({"_id": ObjectId(item["patient_id"])})
-            item["patient_name"] = u.get("full_name", "Unknown") if u else "Unknown"
-        except Exception:
-            item["patient_name"] = "Unknown"
-    return {"consultations": items}
+    serialized = []
+    for raw in items:
+        item = _serialize_consultation(raw, role)
+        item = await _attach_user_names(db, item, role)
+        serialized.append(item)
+    return {"consultations": serialized}
 
 @router.patch("/{consultation_id}")
 async def update_consultation(
@@ -216,9 +261,6 @@ async def get_consultation(
         pid = str(consultation.get("patient_id"))
         if pid != current_user.get("id"):
             raise HTTPException(status_code=403, detail="Forbidden")
-        consultation.pop("doctor_private_notes", None)
-    consultation["id"] = str(consultation["_id"])
-    consultation["patient_id"] = str(consultation["patient_id"])
-    consultation["doctor_id"] = str(consultation["doctor_id"])
-    consultation.pop("_id", None)
-    return consultation
+    item = _serialize_consultation(consultation, role)
+    item = await _attach_user_names(db, item, role)
+    return item

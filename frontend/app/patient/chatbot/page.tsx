@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -45,7 +46,7 @@ export default function PatientChatbotPage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/chatbot/message`, {
+      const response = await fetch(`${API_URL}/api/v1/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

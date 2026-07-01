@@ -11,6 +11,8 @@ import aiohttp
 import re
 import logging
 from app.core.config import settings
+from app.core.doctor_alerts import notify_high_risk_specialists
+from app.core.specializations import DISEASE_DISPLAY_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -29,55 +31,169 @@ models = {
     "kidney_disease": None
 }
 
-FALLBACK_RECOMMENDATIONS = {
-    "Low": [
-        "Maintain a balanced diet with whole grains, vegetables, and lean proteins.",
-        "Stay physically active with at least 150 minutes of moderate exercise weekly.",
-        "Keep a healthy sleep routine and manage stress levels.",
-        "Monitor key health metrics (weight, BP, glucose) periodically.",
-        "Schedule routine checkups and follow preventive care guidance."
-    ],
-    "Medium": [        "Consult a healthcare professional for personalized guidance.",
-        "Reduce sugary, salty, and processed foods; focus on portion control.",
-        "Increase physical activity gradually and aim for consistent routines.",
-        "Track symptoms and risk factors to share during medical visits.",
-        "Consider lab tests or screenings as advised by your clinician."
-    ],
-    "High": [
-        "Seek medical advice soon for a detailed evaluation.",
-        "Follow a structured care plan and adhere to prescribed medication.",
-        "Avoid smoking and limit alcohol; prioritize heart-healthy nutrition.",
-        "Monitor vital signs or relevant metrics as directed by a doctor.",
-        "Arrange follow-up visits to track progress and adjust treatment."
-    ],
-    "Critical": [
-        "Get immediate medical attention or emergency care if symptoms appear.",
-        "Follow clinician instructions strictly and do not delay appointments.",
-        "Avoid strenuous activity until cleared by a healthcare provider.",
-        "Ensure close monitoring and support from family or caregivers.",
-        "Prepare medical history and recent test results for urgent review."
-    ]
+PATIENT_FALLBACK_RECOMMENDATIONS: Dict[str, Dict[str, List[str]]] = {
+    "diabetes": {
+        "Low": [
+            "Keep a balanced diet with whole grains, vegetables, and lean protein to maintain stable blood sugar.",
+            "Stay active with at least 150 minutes of moderate exercise per week.",
+            "Monitor fasting glucose or HbA1c during routine annual checkups.",
+            "Maintain a healthy weight and limit sugary drinks and processed snacks.",
+            "Continue preventive care and discuss family history with your doctor.",
+        ],
+        "Medium": [
+            "Reduce refined carbohydrates and sugary foods to improve glucose control.",
+            "Track your blood sugar readings and share them with your doctor.",
+            "Increase daily walking or light cardio after medical clearance.",
+            "Ask your clinician about prediabetes or diabetes screening labs (HbA1c, fasting glucose).",
+            "Schedule a follow-up visit to create a personalized diabetes prevention plan.",
+        ],
+        "High": [
+            "Consult a doctor soon for a full diabetes evaluation and treatment plan.",
+            "Follow a strict low-sugar, high-fiber meal plan with portion control.",
+            "Monitor blood glucose regularly as advised by your healthcare provider.",
+            "Avoid skipping meals and limit alcohol to prevent glucose spikes.",
+            "Discuss medication, lifestyle changes, and specialist referral if needed.",
+        ],
+        "Critical": [
+            "Seek urgent medical attention if you have very high glucose, vomiting, or confusion.",
+            "Do not delay doctor visits; follow prescribed treatment strictly.",
+            "Avoid high-sugar foods and monitor blood sugar closely.",
+            "Have a caregiver help track symptoms and medication adherence.",
+            "Prepare recent lab reports for immediate clinical review.",
+        ],
+    },
+    "heart_disease": {
+        "Low": [
+            "Follow a heart-healthy diet rich in vegetables, fruits, and whole grains.",
+            "Exercise regularly with aerobic activity such as brisk walking or cycling.",
+            "Maintain healthy blood pressure and cholesterol through lifestyle habits.",
+            "Avoid smoking and limit alcohol consumption.",
+            "Schedule routine cardiovascular checkups with your doctor.",
+        ],
+        "Medium": [
+            "Reduce salt, saturated fat, and processed foods to protect heart health.",
+            "Monitor blood pressure and cholesterol levels more frequently.",
+            "Begin a doctor-approved moderate exercise program.",
+            "Track chest discomfort, breathlessness, or unusual fatigue and report them.",
+            "Book a follow-up visit for ECG, lipid profile, or other cardiac screening.",
+        ],
+        "High": [
+            "Consult a cardiologist soon for a detailed heart risk assessment.",
+            "Follow a low-sodium, heart-healthy diet and take medications as prescribed.",
+            "Avoid strenuous activity until your doctor clears you.",
+            "Monitor blood pressure, heart rate, and symptoms daily.",
+            "Arrange regular follow-ups to adjust treatment and prevent complications.",
+        ],
+        "Critical": [
+            "Seek emergency care immediately for chest pain, severe breathlessness, or fainting.",
+            "Do not ignore warning signs such as pain radiating to the arm, jaw, or back.",
+            "Follow emergency and specialist instructions without delay.",
+            "Avoid heavy exertion and ensure close monitoring by family or caregivers.",
+            "Keep recent cardiac test results ready for urgent medical review.",
+        ],
+    },
+    "kidney_disease": {
+        "Low": [
+            "Stay well hydrated and maintain a balanced, kidney-friendly diet.",
+            "Limit excessive salt and avoid unnecessary painkillers (NSAIDs).",
+            "Monitor blood pressure and blood sugar to protect kidney function.",
+            "Stay active with light exercise such as walking.",
+            "Get routine kidney function tests (creatinine, urea) during checkups.",
+        ],
+        "Medium": [
+            "Reduce sodium and follow portion-controlled protein intake as advised.",
+            "Monitor blood pressure, blood sugar, and swelling in feet or ankles.",
+            "Schedule a follow-up with your doctor for kidney function labs.",
+            "Avoid dehydration and limit foods high in potassium or phosphorus if advised.",
+            "Discuss nephrology referral if creatinine or urea levels remain elevated.",
+        ],
+        "High": [
+            "Consult a nephrologist soon for a comprehensive kidney evaluation.",
+            "Follow a strict renal diet with controlled salt, protein, and fluid intake.",
+            "Monitor creatinine, urea, blood pressure, and urine changes closely.",
+            "Avoid NSAIDs and unverified herbal supplements that can harm kidneys.",
+            "Plan regular lab monitoring and treatment adjustments with your care team.",
+        ],
+        "Critical": [
+            "Seek urgent medical care if you have severe swelling, breathlessness, or reduced urine output.",
+            "Follow nephrology advice immediately regarding diet, fluids, and medication.",
+            "Do not delay dialysis or hospital evaluation if recommended by your doctor.",
+            "Ensure daily monitoring of blood pressure, weight, and symptoms with caregiver support.",
+            "Prepare all recent kidney lab reports for urgent specialist review.",
+        ],
+    },
 }
 
-# Fallback doctor-facing recommendations per risk level (when Gemini is unavailable)
-FALLBACK_DOCTOR_RECOMMENDATIONS = {
-    "Low": [
-        "Reinforce preventive lifestyle advice at next visit.",
-        "Consider annual screening per guidelines.",
-    ],
-    "Medium": [
-        "Schedule follow-up and consider relevant labs or imaging.",
-        "Review medications and comorbidities; set goals with patient.",
-    ],
-    "High": [
-        "Prioritize in-person evaluation and specialist referral if indicated.",
-        "Review medications and vital monitoring plan.",
-    ],
-    "Critical": [
-        "Expedite evaluation; consider emergency referral if unstable.",
-        "Ensure continuity with clear handoff and follow-up plan.",
-    ],
+DOCTOR_FALLBACK_RECOMMENDATIONS: Dict[str, Dict[str, List[str]]] = {
+    "diabetes": {
+        "Low": [
+            "Reinforce lifestyle counseling and annual HbA1c or fasting glucose screening.",
+            "Review BMI, diet, and physical activity at the next routine visit.",
+        ],
+        "Medium": [
+            "Order HbA1c, fasting glucose, and lipid profile; assess for prediabetes or early diabetes.",
+            "Set glycemic targets and schedule follow-up within 3–6 months.",
+        ],
+        "High": [
+            "Refer to endocrinology if indicated; review medication and comorbidities.",
+            "Order HbA1c, renal function, and foot exam; plan close follow-up.",
+        ],
+        "Critical": [
+            "Urgent evaluation for hyperglycemia or complications; consider emergency referral if unstable.",
+            "Review medications, ketone risk, and immediate treatment plan.",
+        ],
+    },
+    "heart_disease": {
+        "Low": [
+            "Continue preventive counseling; repeat lipid profile and BP monitoring annually.",
+            "Encourage Mediterranean-style diet and regular aerobic exercise.",
+        ],
+        "Medium": [
+            "Order ECG, lipid panel, and BP monitoring; assess cardiovascular risk factors.",
+            "Discuss statin, antihypertensive, or lifestyle intervention as appropriate.",
+        ],
+        "High": [
+            "Refer to cardiology; consider stress test, echocardiogram, or advanced imaging.",
+            "Review antihypertensive, antiplatelet, and lipid-lowering therapy.",
+        ],
+        "Critical": [
+            "Expedite cardiology or emergency evaluation if acute symptoms are present.",
+            "Ensure continuous monitoring and clear escalation plan for chest pain or hemodynamic instability.",
+        ],
+    },
+    "kidney_disease": {
+        "Low": [
+            "Reinforce hydration, BP control, and avoidance of nephrotoxic drugs.",
+            "Repeat creatinine, urea, and urinalysis at routine intervals.",
+        ],
+        "Medium": [
+            "Order creatinine, eGFR, urine albumin, electrolytes, and BP review.",
+            "Counsel on renal diet; consider nephrology referral if decline persists.",
+        ],
+        "High": [
+            "Refer to nephrology; monitor creatinine, potassium, hemoglobin, and fluid status.",
+            "Adjust medications for renal function and plan frequent lab follow-up.",
+        ],
+        "Critical": [
+            "Urgent nephrology evaluation; assess need for hospitalization or renal replacement therapy.",
+            "Monitor electrolytes, fluid balance, and urine output closely.",
+        ],
+    },
 }
+
+
+def _get_patient_fallback(disease_type: str, risk_level: str) -> List[str]:
+    disease = PATIENT_FALLBACK_RECOMMENDATIONS.get(
+        disease_type, PATIENT_FALLBACK_RECOMMENDATIONS["diabetes"]
+    )
+    return list(disease.get(risk_level, disease["Medium"]))
+
+
+def _get_doctor_fallback(disease_type: str, risk_level: str) -> List[str]:
+    disease = DOCTOR_FALLBACK_RECOMMENDATIONS.get(
+        disease_type, DOCTOR_FALLBACK_RECOMMENDATIONS["diabetes"]
+    )
+    return list(disease.get(risk_level, disease["Medium"]))
 
 # Replace URLs with curated YouTube links before production use.
 VIDEO_RECOMMENDATIONS = {
@@ -329,6 +445,30 @@ def _normalize_probability(value: Optional[float]) -> Optional[float]:
         return 1.0
     return numeric
 
+def _to_python_scalar(value):
+    """Convert numpy scalars to native Python types for MongoDB/JSON."""
+    if value is None:
+        return value
+    if hasattr(value, "item") and not isinstance(value, (str, bytes)):
+        try:
+            return value.item()
+        except (AttributeError, ValueError):
+            pass
+    return value
+
+
+def _prediction_values(proba_vector, prediction):
+    """Normalize ML model outputs to native Python types."""
+    prob_positive = float(
+        _to_python_scalar(proba_vector[1] if len(proba_vector) > 1 else proba_vector[0])
+    )
+    prob_positive = max(0.0, min(1.0, prob_positive))
+    prediction_int = int(_to_python_scalar(prediction))
+    risk_percentage = round(prob_positive * 100, 2)
+    # Confidence = how decisive the model is (0% at 50/50, 100% at 0% or 100% risk)
+    confidence = round(abs(prob_positive - 0.5) * 200, 2)
+    return prob_positive, risk_percentage, prediction_int, confidence
+
 def get_risk_level(risk_value: float, disease_type: str, prediction: Optional[int] = None) -> str:
     """Map risk value (probability) to risk level using threshold.json.
 
@@ -387,14 +527,25 @@ def _parse_recommendations(text: str) -> List[str]:
     return [item for item in cleaned if item]
 
 
-def _ensure_min_recommendations(items: List[str], risk_level: str) -> List[str]:
-    fallback = FALLBACK_RECOMMENDATIONS.get(risk_level, FALLBACK_RECOMMENDATIONS["Medium"])
-    merged = list(items)
-    for candidate in fallback:
-        if candidate not in merged:
+def _ensure_min_recommendations(
+    items: List[str], disease_type: str, risk_level: str
+) -> List[str]:
+    fallback = _get_patient_fallback(disease_type, risk_level)
+    merged = list(fallback)
+    for candidate in items:
+        if candidate and candidate not in merged:
             merged.append(candidate)
-    if len(merged) < 5:
-        merged.extend([f for f in fallback if f not in merged])
+    return merged[:5]
+
+
+def _ensure_doctor_recommendations(
+    items: List[str], disease_type: str, risk_level: str
+) -> List[str]:
+    fallback = _get_doctor_fallback(disease_type, risk_level)
+    merged = list(fallback)
+    for candidate in items:
+        if candidate and candidate not in merged:
+            merged.append(candidate)
     return merged[:5]
 
 
@@ -435,16 +586,19 @@ async def generate_ai_recommendation(
 ) -> List[str]:
     """Generate 5 short recommendations using Gemini. Falls back to static list."""
     if not settings.GEMINI_API_KEY:
-        return _ensure_min_recommendations([], risk_level)
+        return _ensure_min_recommendations([], disease_type, risk_level)
 
+    disease_label = DISEASE_DISPLAY_NAMES.get(disease_type, disease_type.replace("_", " ").title())
     prompt = (
         "You are a medical assistant. Provide exactly 5 short, non-diagnostic recommendations "
         "as a numbered list (1-5). Each item should be one sentence, avoid alarmist language, "
         "and suggest consulting a doctor for medium/high/critical risk.\n\n"
-        f"Disease: {disease_type}\n"
+        f"Disease: {disease_label}\n"
         f"Risk level: {risk_level}\n"
         f"Risk percentage: {round(risk_percentage, 2)}\n"
-        f"Parameters: {input_data}\n"
+        f"Parameters: {input_data}\n\n"
+        f"Recommendations must be specific to {disease_label} and clearly tailored to {risk_level} risk "
+        "(do not use generic advice that could apply to any disease)."
     )
 
     payload = {
@@ -476,8 +630,8 @@ async def generate_ai_recommendation(
                                     )
                                     if retry_text and isinstance(retry_text, str):
                                         parsed = _parse_recommendations(retry_text)
-                                        return _ensure_min_recommendations(parsed, risk_level)
-                    return _ensure_min_recommendations([], risk_level)
+                                        return _ensure_min_recommendations(parsed, disease_type, risk_level)
+                    return _ensure_min_recommendations([], disease_type, risk_level)
                 data = await response.json()
                 text = (
                     data.get("candidates", [{}])[0]
@@ -487,11 +641,11 @@ async def generate_ai_recommendation(
                 )
                 if text and isinstance(text, str):
                     parsed = _parse_recommendations(text)
-                    return _ensure_min_recommendations(parsed, risk_level)
+                    return _ensure_min_recommendations(parsed, disease_type, risk_level)
     except Exception:
-        return _ensure_min_recommendations([], risk_level)
+        return _ensure_min_recommendations([], disease_type, risk_level)
 
-    return _ensure_min_recommendations([], risk_level)
+    return _ensure_min_recommendations([], disease_type, risk_level)
 
 
 def _parse_patient_and_doctor_recommendations(text: str) -> Tuple[List[str], List[str]]:
@@ -531,16 +685,16 @@ async def generate_ai_recommendations_with_doctor(
 ) -> Tuple[List[str], List[str]]:
     """Generate disease-specific patient + doctor recommendations via Gemini. Returns (patient_list, doctor_list)."""
     if not settings.GEMINI_API_KEY:
-        patient = _ensure_min_recommendations([], risk_level)
-        doctor_fb = FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"])
-        return patient, list(doctor_fb)[:5]
+        patient = _ensure_min_recommendations([], disease_type, risk_level)
+        return patient, _ensure_doctor_recommendations([], disease_type, risk_level)
 
-    disease_label = disease_type.replace("_", " ").title()
+    disease_label = DISEASE_DISPLAY_NAMES.get(disease_type, disease_type.replace("_", " ").title())
     prompt = (
         "You are a medical assistant. Reply with exactly two sections.\n\n"
         "1) PATIENT RECOMMENDATIONS: Give exactly 5 short, non-diagnostic recommendations for the patient "
         f"based on {disease_label} and {risk_level} risk ({round(risk_percentage, 2)}%). "
-        "One sentence each; suggest seeing a doctor for medium/high/critical risk. Number 1-5.\n\n"
+        "One sentence each; suggest seeing a doctor for medium/high/critical risk. Number 1-5. "
+        f"Advice must be specific to {disease_label} and clearly different for {risk_level} risk.\n\n"
         "2) DOCTOR RECOMMENDATIONS: Give exactly 3-5 short, clinical recommendations for the clinician "
         f"for this {disease_label} {risk_level}-risk case (e.g. follow-up, labs, referrals). Number 1-5.\n\n"
         f"Parameters (for context): {input_data}\n\n"
@@ -575,12 +729,12 @@ async def generate_ai_recommendations_with_doctor(
                                     if retry_text and isinstance(retry_text, str):
                                         p, d = _parse_patient_and_doctor_recommendations(retry_text)
                                         return (
-                                            _ensure_min_recommendations(p, risk_level),
-                                            d[:5] if d else list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                                            _ensure_min_recommendations(p, disease_type, risk_level),
+                                            _ensure_doctor_recommendations(d, disease_type, risk_level),
                                         )
                     return (
-                        _ensure_min_recommendations([], risk_level),
-                        list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                        _ensure_min_recommendations([], disease_type, risk_level),
+                        _ensure_doctor_recommendations([], disease_type, risk_level),
                     )
                 data = await response.json()
                 text = (
@@ -592,14 +746,14 @@ async def generate_ai_recommendations_with_doctor(
                 if text and isinstance(text, str):
                     p, d = _parse_patient_and_doctor_recommendations(text)
                     return (
-                        _ensure_min_recommendations(p, risk_level),
-                        d[:5] if d else list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+                        _ensure_min_recommendations(p, disease_type, risk_level),
+                        _ensure_doctor_recommendations(d, disease_type, risk_level),
                     )
     except Exception:
         pass
     return (
-        _ensure_min_recommendations([], risk_level),
-        list(FALLBACK_DOCTOR_RECOMMENDATIONS.get(risk_level, FALLBACK_DOCTOR_RECOMMENDATIONS["Medium"]))[:5],
+        _ensure_min_recommendations([], disease_type, risk_level),
+        _ensure_doctor_recommendations([], disease_type, risk_level),
     )
 
 
@@ -730,7 +884,7 @@ class DiabetesPrediction(BaseModel):
 class HeartDiseasePrediction(BaseModel):
     age: int
     sex: int  # 0=Female, 1=Male
-    chest_pain_type: int  # 0-3
+    chest_pain_type: int  # 1-4 (matches training dataset)
     resting_bp: float
     serum_cholesterol: float
     fasting_blood_sugar: int  # 0 or 1
@@ -738,9 +892,9 @@ class HeartDiseasePrediction(BaseModel):
     max_heart_rate: float
     exercise_induced_angina: int  # 0 or 1
     st_depression: float
-    slope: int  # 0-2
+    slope: int  # 1-3 (matches training dataset)
     num_major_vessels: int
-    thalassemia: int  # 0-3
+    thalassemia: int  # 3, 6, or 7 (matches training dataset)
 
 class KidneyDiseasePrediction(BaseModel):
     age: int
@@ -795,10 +949,11 @@ async def predict_diabetes(
         ]]
         
         # Make prediction
-        prediction = model.predict(input_data)[0]
+        prediction_raw = model.predict(input_data)[0]
         proba_vector = model.predict_proba(input_data)[0]
-        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]  # value in 0–1
-        risk_percentage = prob_value * 100
+        prob_value, risk_percentage, prediction, confidence = _prediction_values(
+            proba_vector, prediction_raw
+        )
         
         # Determine risk level using probability + threshold.json
         risk_level = get_risk_level(prob_value, "diabetes")
@@ -817,8 +972,8 @@ async def predict_diabetes(
             "user_id": current_user["id"],
             "disease_type": "diabetes",
             "input_data": prediction_data.dict(),
-            "prediction": int(prediction),
-            "risk_percentage": float(risk_percentage),
+            "prediction": prediction,
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
@@ -836,12 +991,12 @@ async def predict_diabetes(
             "disease_type": "diabetes",
             "parameters": prediction_data.dict(),
             "prediction_result": {
-                "prediction": int(prediction),
-                "risk_percentage": float(risk_percentage),
+                "prediction": prediction,
+                "risk_percentage": risk_percentage,
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(proba_vector) * 100, 2),
+                "confidence": confidence,
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -852,41 +1007,35 @@ async def predict_diabetes(
         
         # Create notifications for high risk predictions
         if risk_level in ["High", "Critical"]:
-            disease_name = "diabetes"
-            # Notify patient
+            disease_type = "diabetes"
+            disease_label = DISEASE_DISPLAY_NAMES[disease_type]
             patient_notification = {
                 "user_id": current_user["id"],
                 "type": "high_risk",
                 "title": f"High Risk Alert - {risk_level} Risk",
-                "message": f"Your {disease_name.replace('_', ' ').title()} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a doctor.",
+                "message": f"Your {disease_label} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a specialist doctor.",
                 "is_read": False,
                 "created_at": datetime.utcnow(),
-                "prediction_id": str(prediction_id.inserted_id)
+                "prediction_id": str(prediction_id.inserted_id),
+                "disease_type": disease_type,
             }
             await db.notifications.insert_one(patient_notification)
-            
-            # Notify all doctors
-            doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
-            for doctor in doctors:
-                doctor_notification = {
-                    "user_id": str(doctor["_id"]),
-                    "type": "high_risk",
-                    "title": f"High Risk Patient Alert",
-                    "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
-                    "is_read": False,
-                    "created_at": datetime.utcnow(),
-                    "prediction_id": str(prediction_id.inserted_id),
-                    "patient_id": current_user["id"]
-                }
-                await db.notifications.insert_one(doctor_notification)
+            await notify_high_risk_specialists(
+                db,
+                disease_type=disease_type,
+                current_user=current_user,
+                risk_level=risk_level,
+                risk_percentage=risk_percentage,
+                prediction_id=str(prediction_id.inserted_id),
+            )
         
         return {
             "prediction": "Positive" if prediction == 1 else "Negative",
-            "risk_percentage": round(risk_percentage, 2),
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(proba_vector) * 100, 2),
+            "confidence": confidence,
             "video_recommendations": video_recommendations
         }
 
@@ -930,10 +1079,11 @@ async def predict_heart_disease(
             input_data = scaler.transform(input_data)
         
         # Make prediction
-        prediction = model.predict(input_data)[0]
+        prediction_raw = model.predict(input_data)[0]
         proba_vector = model.predict_proba(input_data)[0]
-        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]
-        risk_percentage = prob_value * 100
+        prob_value, risk_percentage, prediction, confidence = _prediction_values(
+            proba_vector, prediction_raw
+        )
         
         # Determine risk level using probability + threshold.json only
         risk_level = get_risk_level(prob_value, "heart_disease")
@@ -952,8 +1102,8 @@ async def predict_heart_disease(
             "user_id": current_user["id"],
             "disease_type": "heart_disease",
             "input_data": prediction_data.dict(),
-            "prediction": int(prediction),
-            "risk_percentage": float(risk_percentage),
+            "prediction": prediction,
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
@@ -971,12 +1121,12 @@ async def predict_heart_disease(
             "disease_type": "heart_disease",
             "parameters": prediction_data.dict(),
             "prediction_result": {
-                "prediction": int(prediction),
-                "risk_percentage": float(risk_percentage),
+                "prediction": prediction,
+                "risk_percentage": risk_percentage,
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(proba_vector) * 100, 2),
+                "confidence": confidence,
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -987,41 +1137,35 @@ async def predict_heart_disease(
 
         # Create notifications for high risk predictions
         if risk_level in ["High", "Critical"]:
-            disease_name = "heart_disease"
-            # Notify patient
+            disease_type = "heart_disease"
+            disease_label = DISEASE_DISPLAY_NAMES[disease_type]
             patient_notification = {
                 "user_id": current_user["id"],
                 "type": "high_risk",
                 "title": f"High Risk Alert - {risk_level} Risk",
-                "message": f"Your {disease_name.replace('_', ' ').title()} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a doctor.",
+                "message": f"Your {disease_label} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a specialist doctor.",
                 "is_read": False,
                 "created_at": datetime.utcnow(),
-                "prediction_id": str(prediction_id.inserted_id)
+                "prediction_id": str(prediction_id.inserted_id),
+                "disease_type": disease_type,
             }
             await db.notifications.insert_one(patient_notification)
-            
-            # Notify all doctors
-            doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
-            for doctor in doctors:
-                doctor_notification = {
-                    "user_id": str(doctor["_id"]),
-                    "type": "high_risk",
-                    "title": f"High Risk Patient Alert",
-                    "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
-                    "is_read": False,
-                    "created_at": datetime.utcnow(),
-                    "prediction_id": str(prediction_id.inserted_id),
-                    "patient_id": current_user["id"]
-                }
-                await db.notifications.insert_one(doctor_notification)
+            await notify_high_risk_specialists(
+                db,
+                disease_type=disease_type,
+                current_user=current_user,
+                risk_level=risk_level,
+                risk_percentage=risk_percentage,
+                prediction_id=str(prediction_id.inserted_id),
+            )
 
         return {
             "prediction": "Positive" if prediction == 1 else "Negative",
-            "risk_percentage": round(risk_percentage, 2),
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(proba_vector) * 100, 2),
+            "confidence": confidence,
             "video_recommendations": video_recommendations
         }
 
@@ -1083,7 +1227,7 @@ async def predict_kidney_disease(
                 encoder = encoders[col]
                 value = str(raw_features[col]).strip().lower()
                 if value in encoder.classes_:
-                    raw_features[col] = int(encoder.transform([value])[0])
+                    raw_features[col] = int(_to_python_scalar(encoder.transform([value])[0]))
                 else:
                     raw_features[col] = -1
 
@@ -1098,10 +1242,11 @@ async def predict_kidney_disease(
             input_data = scaler.transform(input_data)
         
         # Make prediction
-        prediction = model.predict(input_data)[0]
+        prediction_raw = model.predict(input_data)[0]
         proba_vector = model.predict_proba(input_data)[0]
-        prob_value = proba_vector[1] if len(proba_vector) > 1 else proba_vector[0]
-        risk_percentage = prob_value * 100
+        prob_value, risk_percentage, prediction, confidence = _prediction_values(
+            proba_vector, prediction_raw
+        )
         
         # Determine risk level using probability + threshold.json only
         risk_level = get_risk_level(prob_value, "kidney_disease")
@@ -1120,8 +1265,8 @@ async def predict_kidney_disease(
             "user_id": current_user["id"],
             "disease_type": "kidney_disease",
             "input_data": prediction_data.dict(),
-            "prediction": int(prediction),
-            "risk_percentage": float(risk_percentage),
+            "prediction": prediction,
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
@@ -1139,12 +1284,12 @@ async def predict_kidney_disease(
             "disease_type": "kidney_disease",
             "parameters": prediction_data.dict(),
             "prediction_result": {
-                "prediction": int(prediction),
-                "risk_percentage": float(risk_percentage),
+                "prediction": prediction,
+                "risk_percentage": risk_percentage,
                 "risk_level": risk_level,
                 "recommendation": recommendation,
                 "doctor_recommendation": doctor_recommendation,
-                "confidence": round(max(proba_vector) * 100, 2),
+                "confidence": confidence,
                 "video_recommendations": video_recommendations
             },
             "created_by": user_oid,
@@ -1155,41 +1300,35 @@ async def predict_kidney_disease(
 
         # Create notifications for high risk predictions
         if risk_level in ["High", "Critical"]:
-            disease_name = "kidney_disease"
-            # Notify patient
+            disease_type = "kidney_disease"
+            disease_label = DISEASE_DISPLAY_NAMES[disease_type]
             patient_notification = {
                 "user_id": current_user["id"],
                 "type": "high_risk",
                 "title": f"High Risk Alert - {risk_level} Risk",
-                "message": f"Your {disease_name.replace('_', ' ').title()} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a doctor.",
+                "message": f"Your {disease_label} prediction shows {risk_level.lower()} risk ({round(risk_percentage, 2)}%). Please consult with a specialist doctor.",
                 "is_read": False,
                 "created_at": datetime.utcnow(),
-                "prediction_id": str(prediction_id.inserted_id)
+                "prediction_id": str(prediction_id.inserted_id),
+                "disease_type": disease_type,
             }
             await db.notifications.insert_one(patient_notification)
-            
-            # Notify all doctors
-            doctors = await db.users.find({"role": "doctor"}).to_list(length=None)
-            for doctor in doctors:
-                doctor_notification = {
-                    "user_id": str(doctor["_id"]),
-                    "type": "high_risk",
-                    "title": f"High Risk Patient Alert",
-                    "message": f"Patient {current_user.get('full_name', 'Unknown')} has {risk_level.lower()} risk ({round(risk_percentage, 2)}%) for {disease_name.replace('_', ' ').title()}. Review required.",
-                    "is_read": False,
-                    "created_at": datetime.utcnow(),
-                    "prediction_id": str(prediction_id.inserted_id),
-                    "patient_id": current_user["id"]
-                }
-                await db.notifications.insert_one(doctor_notification)
+            await notify_high_risk_specialists(
+                db,
+                disease_type=disease_type,
+                current_user=current_user,
+                risk_level=risk_level,
+                risk_percentage=risk_percentage,
+                prediction_id=str(prediction_id.inserted_id),
+            )
 
         return {
             "prediction": "Positive" if prediction == 1 else "Negative",
-            "risk_percentage": round(risk_percentage, 2),
+            "risk_percentage": risk_percentage,
             "risk_level": risk_level,
             "recommendation": recommendation,
             "doctor_recommendation": doctor_recommendation,
-            "confidence": round(max(proba_vector) * 100, 2),
+            "confidence": confidence,
             "video_recommendations": video_recommendations
         }
 

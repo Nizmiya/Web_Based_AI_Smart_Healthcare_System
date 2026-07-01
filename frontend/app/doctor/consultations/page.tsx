@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { toApiLocalDateTime, formatAppointmentDateTime } from '@/lib/datetime';
 import { validateRequired } from '@/lib/validations';
 import { showSuccess, showError } from '@/lib/alerts';
 
@@ -65,7 +66,7 @@ export default function DoctorConsultationsPage() {
     try {
       await api.consultations.create({
         patient_id: form.patient_id,
-        scheduled_at: new Date(form.scheduled_at).toISOString(),
+        scheduled_at: toApiLocalDateTime(form.scheduled_at),
         notes: form.notes || undefined,
       });
       await showSuccess('Consultation scheduled successfully', 'The appointment has been created.');
@@ -232,7 +233,7 @@ export default function DoctorConsultationsPage() {
                     <tr key={c.id} className="hover:bg-gray-50">
                       <td className="py-4 px-4 font-medium text-gray-900">{c.patient_name || c.patient_id}</td>
                       <td className="py-4 px-4 text-gray-600">
-                        {c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : '—'}
+                        {formatAppointmentDateTime(c.scheduled_at)}
                       </td>
                       <td className="py-4 px-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${

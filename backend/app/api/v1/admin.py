@@ -3,7 +3,9 @@ from app.core.database import get_database
 from app.api.v1.auth import get_current_user, get_password_hash
 from app.models.user import UserResponse
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Any
+from typing import Optional, Any, Literal
+from app.core.specializations import SPECIALIZATION_OPTIONS
+from app.core.user_utils import find_user_by_email, normalize_email
 from datetime import datetime
 from bson import ObjectId
 
@@ -14,6 +16,7 @@ class DoctorCreate(BaseModel):
     full_name: str
     phone: Optional[str] = None
     password: str
+    specialization: Literal["cardiologist", "endocrinologist", "nephrologist"]
 
 class UserUpdateActive(BaseModel):
     is_active: bool
@@ -46,20 +49,21 @@ async def create_doctor(
     db=Depends(get_database)
 ):
     """Create a new doctor account (Admin only)"""
-    # Check if doctor already exists
-    existing_user = await db.users.find_one({"email": doctor_data.email})
+    email = normalize_email(doctor_data.email)
+    existing_user = await find_user_by_email(db, email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create doctor user
     doctor_dict = {
-        "email": doctor_data.email,
+        "email": email,
         "full_name": doctor_data.full_name,
         "phone": doctor_data.phone,
         "role": "doctor",  # Always doctor
+        "specialization": doctor_data.specialization,
         "password": get_password_hash(doctor_data.password),
         "is_active": True,
         "created_at": datetime.utcnow(),
@@ -72,6 +76,12 @@ async def create_doctor(
     doctor_dict.pop("created_by", None)
     
     return UserResponse(**doctor_dict)
+
+@router.get("/specializations")
+async def list_specializations(admin_user: dict = Depends(require_admin)):
+    """List doctor specialization options (Admin only)."""
+    return {"specializations": SPECIALIZATION_OPTIONS}
+
 
 @router.get("/doctors")
 async def list_doctors(

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSelector from '@/components/LanguageSelector';
 import { useState, useEffect } from 'react';
@@ -331,7 +332,7 @@ export default function Home() {
             </div>
             <div className="flex gap-6">
             <a 
-              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`} 
+              href={`${API_URL}/docs`} 
               target="_blank"
                 className="text-gray-300 hover:text-white transition-colors text-sm"
             >

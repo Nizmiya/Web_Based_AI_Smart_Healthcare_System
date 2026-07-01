@@ -8,6 +8,7 @@ import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { validateRequiredNumber, firstError } from '@/lib/validations';
 import { showSuccess, showError } from '@/lib/alerts';
+import { KIDNEY_AUTO_FILL } from '@/lib/formPresets';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -26,36 +27,12 @@ export default function KidneyDiseasePrediction() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({
-    age: '',
-    blood_pressure: '',
-    specific_gravity: '',
-    albumin: '',
-    sugar: '',
-    red_blood_cells: 'normal',
-    pus_cell: 'normal',
-    pus_cell_clumps: 'notpresent',
-    bacteria: 'notpresent',
-    blood_glucose_random: '',
-    blood_urea: '',
-    serum_creatinine: '',
-    sodium: '140.0',
-    potassium: '4.0',
-    hemoglobin: '15.0',
-    packed_cell_volume: '45.0',
-    white_blood_cell_count: '8000.0',
-    red_blood_cell_count: '5.0',
-    hypertension: 'no',
-    diabetes_mellitus: 'no',
-    coronary_artery_disease: 'no',
-    appetite: 'good',
-    pedal_edema: 'no',
-    anemia: 'no',
-  });
+  const [formData, setFormData] = useState(KIDNEY_AUTO_FILL);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setResult(null);
     const validationErr = firstError(
       validateRequiredNumber(formData.age, 'Age', 1, 120),
       validateRequiredNumber(formData.blood_pressure, 'Blood pressure', 0, 300),
@@ -223,7 +200,10 @@ export default function KidneyDiseasePrediction() {
                 <VideoRecommendations videos={result.video_recommendations || []} />
 
                 <button
-                  onClick={() => setResult(null)}
+                  onClick={() => {
+                    setResult(null);
+                    setFormData(KIDNEY_AUTO_FILL);
+                  }}
                   className="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 transition-colors font-semibold text-lg"
                 >
                   {t('makeAnotherPrediction')}

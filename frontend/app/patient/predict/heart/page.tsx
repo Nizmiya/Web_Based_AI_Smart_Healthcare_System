@@ -8,6 +8,7 @@ import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { validateRequiredNumber, firstError } from '@/lib/validations';
 import { showSuccess, showError } from '@/lib/alerts';
+import { HEART_AUTO_FILL } from '@/lib/formPresets';
 
 const normalizeRecommendations = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -26,25 +27,12 @@ export default function HeartDiseasePrediction() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({
-    age: '',
-    sex: '1',
-    chest_pain_type: '1',
-    resting_bp: '',
-    serum_cholesterol: '',
-    fasting_blood_sugar: '0',
-    resting_ecg: '0',
-    max_heart_rate: '',
-    exercise_induced_angina: '0',
-    st_depression: '0.0',
-    slope: '1',
-    num_major_vessels: '0',
-    thalassemia: '2',
-  });
+  const [formData, setFormData] = useState(HEART_AUTO_FILL);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setResult(null);
     const validationErr = firstError(
       validateRequiredNumber(formData.age, 'Age', 1, 120),
       validateRequiredNumber(formData.resting_bp, 'Resting blood pressure', 0, 300),
@@ -200,21 +188,7 @@ export default function HeartDiseasePrediction() {
                 <button
                   onClick={() => {
                     setResult(null);
-                    setFormData({
-                      age: '',
-                      sex: '1',
-                      chest_pain_type: '1',
-                      resting_bp: '',
-                      serum_cholesterol: '',
-                      fasting_blood_sugar: '0',
-                      resting_ecg: '0',
-                      max_heart_rate: '',
-                      exercise_induced_angina: '0',
-                      st_depression: '0.0',
-                      slope: '1',
-                      num_major_vessels: '0',
-                      thalassemia: '2',
-                    });
+                    setFormData(HEART_AUTO_FILL);
                   }}
                   className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 transition-colors font-semibold text-lg"
                 >
@@ -263,10 +237,10 @@ export default function HeartDiseasePrediction() {
                       onChange={(e) => setFormData({ ...formData, chest_pain_type: e.target.value })}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-gray-900"
                     >
-                      <option value="0">Typical Angina</option>
-                      <option value="1">Atypical Angina</option>
-                      <option value="2">Non-anginal Pain</option>
-                      <option value="3">Asymptomatic</option>
+                      <option value="1">Typical Angina</option>
+                      <option value="2">Atypical Angina</option>
+                      <option value="3">Non-anginal Pain</option>
+                      <option value="4">Asymptomatic</option>
                     </select>
                   </div>
 
@@ -387,9 +361,9 @@ export default function HeartDiseasePrediction() {
                       onChange={(e) => setFormData({ ...formData, slope: e.target.value })}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-gray-900"
                     >
-                      <option value="0">Upsloping</option>
-                      <option value="1">Flat</option>
-                      <option value="2">Downsloping</option>
+                      <option value="1">Upsloping</option>
+                      <option value="2">Flat</option>
+                      <option value="3">Downsloping</option>
                     </select>
                   </div>
 
@@ -418,10 +392,9 @@ export default function HeartDiseasePrediction() {
                       onChange={(e) => setFormData({ ...formData, thalassemia: e.target.value })}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-gray-900"
                     >
-                      <option value="0">Null</option>
-                      <option value="1">Normal</option>
-                      <option value="2">Fixed Defect</option>
-                      <option value="3">Reversible Defect</option>
+                      <option value="3">Normal</option>
+                      <option value="6">Fixed Defect</option>
+                      <option value="7">Reversible Defect</option>
                     </select>
                   </div>
                 </div>

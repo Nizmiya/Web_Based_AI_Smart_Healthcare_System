@@ -9,6 +9,14 @@ import { API_URL } from '@/lib/api';
 import { validateRequired, validateEmail, validatePhone10Required, validatePassword } from '@/lib/validations';
 import { showSuccess, showError } from '@/lib/alerts';
 
+function formatApiError(detail: unknown): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => (typeof item === 'object' && item && 'msg' in item ? String(item.msg) : String(item))).join(', ');
+  }
+  return 'Request failed';
+}
+
 export default function LoginPage() {
   const { t } = useLanguage();
   const [isRegister, setIsRegister] = useState(false);
@@ -42,7 +50,7 @@ export default function LoginPage() {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          username: email,
+          username: email.trim().toLowerCase(),
           password: password,
         }),
       });
@@ -90,10 +98,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const requestBody: Record<string, string> = {
-        email,
+        email: email.trim().toLowerCase(),
         password,
-        full_name: fullName,
-        phone,
+        full_name: fullName.trim(),
+        phone: phone.replace(/\D/g, ''),
         role: 'patient', // Always patient for registration
       };
       if (address.trim()) requestBody.address = address.trim();
@@ -129,7 +137,7 @@ export default function LoginPage() {
           const text = await response.text();
           errorData = { detail: text || 'Registration failed' };
         }
-        const msg = errorData.detail || `Registration failed (Status: ${response.status})`;
+        const msg = formatApiError(errorData.detail) || `Registration failed (Status: ${response.status})`;
         setError(msg);
         await showError('Registration failed', msg);
       }

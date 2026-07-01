@@ -35,6 +35,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: str
     role: str
+    specialization: Optional[str] = None
     is_active: bool
     created_at: datetime
     

@@ -89,7 +89,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'riskLevel': 'Risk Level',
     'riskPercentage': 'Risk Percentage',
     'prediction': 'Prediction',
-    'confidence': 'Confidence',
+    'confidence': 'Model Certainty',
     'recommendations': 'Recommendations',
     
     // Navigation
@@ -239,7 +239,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'riskLevel': 'ஆபத்து நிலை',
     'riskPercentage': 'ஆபத்து சதவீதம்',
     'prediction': 'கணிப்பு',
-    'confidence': 'நம்பிக்கை',
+    'confidence': 'மதிப்பீட்டு உறுதி',
     'recommendations': 'பரிந்துரைகள்',
     
     // Navigation

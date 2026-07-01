@@ -5,27 +5,19 @@ Creates 3 users: Patient, Doctor, Admin
 
 from pymongo import MongoClient
 from datetime import datetime
-from passlib.context import CryptContext
+import bcrypt
 import os
 import sys
 
 MONGODB_URL = os.getenv('MONGODB_URL', 'mongodb://localhost:27017')
 DATABASE_NAME = 'healthcare_db'
 
-# Initialize password hasher
-try:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-except:
-    print("Warning: Using simple password storage (install passlib[bcrypt] for proper hashing)")
-
 def hash_password(password):
-    """Hash password using bcrypt"""
-    try:
-        return pwd_context.hash(password)
-    except Exception as e:
-        # Fallback if bcrypt fails
-        import hashlib
-        return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt (same method as auth.py)"""
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 # Test users
 test_users = [
@@ -34,22 +26,39 @@ test_users = [
         "password": "patient123",
         "full_name": "Test Patient",
         "phone": "+91 9876543210",
-        "role": "patient"
+        "role": "patient",
     },
     {
-        "email": "doctor@test.com",
+        "email": "cardio@test.com",
         "password": "doctor123",
-        "full_name": "Dr. Test Doctor",
+        "full_name": "Dr. Heart Specialist",
         "phone": "+91 9876543211",
-        "role": "doctor"
+        "role": "doctor",
+        "specialization": "cardiologist",
+    },
+    {
+        "email": "diabetesdoc@test.com",
+        "password": "doctor123",
+        "full_name": "Dr. Diabetes Specialist",
+        "phone": "+91 9876543212",
+        "role": "doctor",
+        "specialization": "endocrinologist",
+    },
+    {
+        "email": "kidneydoc@test.com",
+        "password": "doctor123",
+        "full_name": "Dr. Kidney Specialist",
+        "phone": "+91 9876543213",
+        "role": "doctor",
+        "specialization": "nephrologist",
     },
     {
         "email": "admin@test.com",
         "password": "admin123",
         "full_name": "Admin User",
-        "phone": "+91 9876543212",
-        "role": "admin"
-    }
+        "phone": "+91 9876543214",
+        "role": "admin",
+    },
 ]
 
 print("="*60)
@@ -91,9 +100,11 @@ try:
             "role": user_data["role"],
             "password": hashed,
             "is_active": True,
-            "created_at": datetime.now()
+            "created_at": datetime.now(),
         }
-        
+        if user_data.get("specialization"):
+            user_doc["specialization"] = user_data["specialization"]
+
         result = db.users.insert_one(user_doc)
         created_count += 1
         print(f"[OK] Created {user_data['role']}: {email}")
@@ -114,9 +125,10 @@ try:
     print("\nPATIENT:")
     print("  Email: patient@test.com")
     print("  Password: patient123")
-    print("\nDOCTOR:")
-    print("  Email: doctor@test.com")
-    print("  Password: doctor123")
+    print("\nSPECIALIST DOCTORS (password: doctor123):")
+    print("  Cardiologist:     cardio@test.com")
+    print("  Endocrinologist:  diabetesdoc@test.com")
+    print("  Nephrologist:     kidneydoc@test.com")
     print("\nADMIN:")
     print("  Email: admin@test.com")
     print("  Password: admin123")
